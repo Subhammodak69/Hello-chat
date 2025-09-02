@@ -13,7 +13,7 @@ const RightSidebar =({selectedUser}) => {
         </h1>
         <p className='px-10 mx-auto'>{selectedUser.bio}</p>
       </div>
-
+      
     </div>
   )
 }

@@ -35,7 +35,7 @@ const ChatContainer = ({ selectedUser, setSelectedUser }) => {
           <span className='w-2 h-2 rounded-full bg-green-700'></span>
         </div>
         <div>
-          <img onClick={() => setSelectedUser(null)} src={arrow_icon} alt='' className='md:hidden max-w-7' />
+          <img onClick={() => setSelectedUser(null)} src={arrow_icon} alt='' className='md:hidden max-w-4' />
           <img src={help} alt="" className='max-md:hidden max-w-5' />
         </div>
       </div>

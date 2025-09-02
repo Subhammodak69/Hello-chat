@@ -27,7 +27,7 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
           </div>
 
         </div>
-        <div className='bg-[#282142] rounded-full flex items-center gap-2 mt-[10px] mb-[10px] mx-4'>
+        <div className='bg-[#261f40] rounded-full flex items-center gap-2 mt-[10px] mb-[10px]'>
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-6 h-8 py-2 pl-2">
             <path
               strokeLinecap="round"
