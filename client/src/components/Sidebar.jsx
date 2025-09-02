@@ -1,0 +1,78 @@
+import React from 'react'
+import logoImg from '../assets/message.png';
+import { useNavigate } from 'react-router-dom';
+import assets from '../assets/assets';
+import avatar_icon from '../assets/avatar.avif';
+
+
+const Sidebar = ({ selectedUser, setSelectedUser }) => {
+  const navigate = useNavigate();
+  return (
+    <div className={`bg-[#000ea6]/10 h-full p-5 rounded overflow-y-scroll text-white ${selectedUser ? "max-md:hidden" : ''}`}>
+      <div className='pb-5'>
+        <div className='flex justify-between items-start'>
+          <div className='flex items-center'>
+            <img src={logoImg} alt="logo" className="rounded-full ml-[5px] mt-[5px] max-w-10" />
+            Hello Chats
+          </div>
+          <div className="relative group mr-[10px]">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM12.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM18.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
+            </svg>
+            <div className="absolute top-full right-0 z-20 w-32 p-5 rounded-md bg-[rgb(110,195,255)] border border-grey-600 text-grey-100 cursor-pointer hidden group-hover:block">
+              <p onClick={() => navigate('/profile')} className="cursor-pointer text-sm">Edit Profile</p>
+              <hr className="my-2 border-t border-grey-500" />
+              <p className="cursor-pointer text-sm">Logout</p>
+            </div>
+          </div>
+
+        </div>
+        <div className='bg-[#282142] rounded-full flex items-center gap-2 mt-[10px] mb-[10px] mx-4'>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-6 h-8 py-2 pl-2">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-4.35-4.35M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"
+            />
+          </svg>
+          <input type="text" className='bg-transparenborder-none outline-none text-white text-xs placeholder-[#c8c8c8] flex-1' placeholder='Search User....' />
+        </div>
+        <div className="flex flex-col">
+          {assets.userDummyData.map((user) => (
+            <div
+              key={user.id}
+              onClick={() => {
+                setSelectedUser(user);
+              }}
+              className={`relative flex items-center gap-2 p-2 pl-4 rounded cursor-pointer max-sm:text-sm ${selectedUser && selectedUser.id === user.id ? 'bg-[#282142]/50' : ''
+                }`}
+            >
+              <img
+                src={user?.avatar || avatar_icon}
+                alt={user.name || 'User avatar'}
+                className="h-[40px] aspect-[1/1] rounded-full"
+              />
+              <div className="flex flex-col leading-5">
+                <p>{user.name}</p>
+                {user.is_online ? ( 
+                  <span className="text-green-400 text-xs">Online</span>
+                ) : (
+                  <span className="text-neutral-400 text-xs">Offline</span>
+                )}
+              </div>
+              {user.id < 3 && (  // Or any condition you want for badges
+                <p className="absolute top-4 right-4 text-xs h-5 w-5 flex justify-center items-center rounded-full bg-violet-500/50">
+                  {user.id}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+
+      </div>
+    </div>
+  )
+}
+
+export default Sidebar
