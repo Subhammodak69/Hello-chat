@@ -13,13 +13,14 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
         <div className='flex justify-between items-start'>
           <div className='flex items-center'>
             <img src={logoImg} alt="logo" className="rounded-full ml-[5px] mt-[5px] max-w-10" />
-            Hello Chats
+            <h1 className='m-auto text-lg text-black font-bold'>Hello Chats</h1>
+
           </div>
           <div className="relative group mr-[10px]">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM12.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM18.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
             </svg>
-            <div className="absolute top-full right-0 z-20 w-32 p-5 rounded-md bg-[rgb(110,195,255)] border border-grey-600 text-grey-100 cursor-pointer hidden group-hover:block">
+            <div className="absolute top-full right-0 z-20 w-32 p-5 rounded-md bg-[ #3579ff3b] border border-grey-600 text-grey-100 cursor-pointer hidden group-hover:block">
               <p onClick={() => navigate('/profile')} className="cursor-pointer text-sm">Edit Profile</p>
               <hr className="my-2 border-t border-grey-500" />
               <p className="cursor-pointer text-sm">Logout</p>

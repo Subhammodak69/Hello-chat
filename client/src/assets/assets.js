@@ -1,4 +1,3 @@
-// assets.js
 
 const avatarIcons = [
   'https://randomuser.me/api/portraits/men/1.jpg',
@@ -70,7 +69,17 @@ const chatMessagesDummyData = {
   // Add more chat histories keyed by userId
 };
 
+
+
+const imagesDummyData = [
+  { url: "https://images.unsplash.com/photo-1506748686214-e9df14d4d9d0?auto=format&fit=crop&w=400&q=80" },
+  { url: "https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=400&q=80" },
+  { url: "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=400&q=80" },
+  { url: "https://images.unsplash.com/photo-1502764613149-7f1d229e230f?auto=format&fit=crop&w=400&q=80" }
+];
+
 const assets = {
+  imagesDummyData,
   avatarIcons,
   userDummyData,
   chatMessagesDummyData,

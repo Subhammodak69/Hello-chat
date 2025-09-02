@@ -16,7 +16,7 @@ const App = () =>{
   )
 }
 const gradientStyle = {
-  background: 'linear-gradient(90deg, #2b8effff, #7dbaffff, #4c6dffff)',
+  background: 'linear-gradient(90deg, rgb(43, 142, 255), rgb(125, 186, 255), rgb(10 29 157))',
   height: '100vh',
   display: 'flex',
   justifyContent: 'center',
