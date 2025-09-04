@@ -1,9 +1,9 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect,useState, useRef } from 'react'
 import arrow_icon from '../assets/left-arrow.png';
 import help from '../assets/question.png';
 import logoImg from '../assets/message.png';
 import galary from '../assets/image.png';
-import sendbtn from '../assets/send-message.png';
+import sendbtn from '../assets/send.png';
 import assets from '../assets/assets';
 import { formatMessageTime } from '../lib/utils';
 
@@ -11,7 +11,7 @@ import { formatMessageTime } from '../lib/utils';
 const ChatContainer = ({ selectedUser, setSelectedUser }) => {
   if (!selectedUser) {
     return (
-      <div className='flex flex-col items-center justify-center gap-2 text-grey-500 bg-white/10 max-md:hidden'>
+      <div className='flex flex-col items-center justify-center gap-2 text-grey-500 max-md:hidden'>
         <img src={logoImg} alt="" className='max-w-16' />
         <p className='text-lg font-medium text-white'>Chat anytime anywhere</p>
       </div>
@@ -25,17 +25,20 @@ const ChatContainer = ({ selectedUser, setSelectedUser }) => {
         scrollEnd.current.scrollIntoView({ behavior:"smooth"})
       }
   },[])
+
+  const [message,setMessage] = useState('')
+  const [selectedImage,setSelectedImage] = useState('')
   return (
-    <div className='h-full overflow-scroll relative backdrop-blur-lg'>
+    <div className='h-full overflow-scroll relative backdrop-blur-lg '>
       {/* Header */}
       <div className='flex items-center justify-between gap-3 py-3 mx-4 border-b border-stone-500'>
         <div className='flex items-center gap-2'>
           <img src={selectedUser.avatar} alt='' className='w-8 rounded-full' />
-          <p className='mr-0'>{selectedUser.name}</p>
+          <h1 className='m-auto text-lg text-black font-bold'>{selectedUser.name}</h1>
           <span className='w-2 h-2 rounded-full bg-green-700'></span>
         </div>
         <div>
-          <img onClick={() => setSelectedUser(null)} src={arrow_icon} alt='' className='md:hidden max-w-4' />
+          <img onClick={() => setSelectedUser(null)} src={arrow_icon} alt='' className='md:hidden max-w-7' />
           <img src={help} alt="" className='max-md:hidden max-w-5' />
         </div>
       </div>
@@ -60,7 +63,7 @@ const ChatContainer = ({ selectedUser, setSelectedUser }) => {
                     {msg.message}
                   </p>
                 )}
-                <span className="text-xs text-gray-500">{formatMessageTime(msg.timestamp)}</span>
+                <span className="text-xs text-white-500">{formatMessageTime(msg.timestamp)}</span>
               </div>
             </div>
           ) : (
@@ -87,7 +90,7 @@ const ChatContainer = ({ selectedUser, setSelectedUser }) => {
                     {msg.message}
                   </p>
                 )}
-                <span className="text-xs text-gray-500">{formatMessageTime(msg.timestamp)}</span>
+                <span className="text-xs text-white-500">{formatMessageTime(msg.timestamp)}</span>
               </div>
             </div>
           )
@@ -97,13 +100,15 @@ const ChatContainer = ({ selectedUser, setSelectedUser }) => {
         {/*------------bottom area start------- */}
         <div className='absolute bottom-0 left-0 right-0 flex items-center gap-3 p-3'>
           <div className='flex-1 flex items-center bg-gray-100/12 px-3 rounded-full'>
-            <input type='text' placeholder='Send a message'className='flex-1 text-sm p-3 border-none rounded-lg outline-none text-white placeholder-gray-800'/>
-            <input type='file' id="image" accept='*' hidden/>
+            <input onChange={(e)=>setMessage(e.target.value)} value={message}
+             type='text' placeholder='Send a message'className='flex-1 text-sm p-3 border-none rounded-lg outline-none text-white placeholder-gray-800'/>
+            <input onChange={(e)=>setSelectedImage(e.target.files[0])} value={selectedImage}
+             type='file' id="image" accept='*' hidden/>
             <label htmlFor="image">
               <img src={galary} alt='' className='w-5 mr-2 cursor-pointer'/>
             </label>
           </div>
-          <img src={sendbtn} alt='' className='w-5 cursor-pointer'/>
+          {selectedImage || message ? ( <img src={sendbtn} alt='' className='w-5 cursor-pointer'/>):''}
         </div>
         {/*------------bottom area end------- */}
     </div>

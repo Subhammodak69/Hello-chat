@@ -1,12 +1,32 @@
-import React from 'react'
+import React, {useRef, useEffect, useState } from 'react'
 import logoImg from '../assets/message.png';
 import { useNavigate } from 'react-router-dom';
 import assets from '../assets/assets';
 import avatar_icon from '../assets/avatar.avif';
+import logoutIcon from '../assets/turn-off.png';
+import ProfileIcon from '../assets/user.png';
 
 
 const Sidebar = ({ selectedUser, setSelectedUser }) => {
   const navigate = useNavigate();
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Close dropdown if click is outside of dropdownRef element
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [dropdownRef]);
+
+
   return (
     <div className={`bg-[#000ea6]/10 h-full p-5 rounded overflow-y-scroll text-white ${selectedUser ? "max-md:hidden" : ''}`}>
       <div className='pb-5'>
@@ -16,16 +36,33 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
             <h1 className='m-auto text-lg text-black font-bold'>Hello Chats</h1>
 
           </div>
-          <div className="relative group mr-[10px]">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+          <div className="relative group mr-[10px]" ref={dropdownRef}>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+              className="w-6 h-6 text-white-800 cursor-pointer"
+              onClick={() => setIsOpen(!isOpen)}
+            >
               <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM12.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM18.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
             </svg>
-            <div className="absolute top-full right-0 z-20 w-32 p-5 rounded-md bg-[ #3579ff3b] border border-grey-600 text-grey-100 cursor-pointer hidden group-hover:block">
-              <p onClick={() => navigate('/profile')} className="cursor-pointer text-sm">Edit Profile</p>
+
+            <div className={`absolute top-full right-0 z-20 w-32 p-5 rounded-md bg-[ #3579ff3b] border border-grey-600 text-grey-100 cursor-pointer 
+    ${isOpen ? "block" : "hidden"} group-hover:block`}>
+              <p onClick={() => navigate('/profile')} className="cursor-pointer flex gap-[5px] text-sm">
+                <img src={ProfileIcon} alt='' className='max-w-5 bg-white rounded-full' />
+                Profile
+              </p>
               <hr className="my-2 border-t border-grey-500" />
-              <p className="cursor-pointer text-sm">Logout</p>
+              <p className="cursor-pointer flex gap-[5px] text-sm">
+                <img src={logoutIcon} alt='' className='max-w-5 bg-white rounded-full' />
+                Logout
+              </p>
             </div>
           </div>
+
 
         </div>
         <div className='bg-[#261f40] rounded-full flex items-center gap-2 mt-[10px] mb-[10px]'>
@@ -56,7 +93,7 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
               />
               <div className="flex flex-col leading-5">
                 <p>{user.name}</p>
-                {user.is_online ? ( 
+                {user.is_online ? (
                   <span className="text-green-400 text-xs">Online</span>
                 ) : (
                   <span className="text-neutral-400 text-xs">Offline</span>
