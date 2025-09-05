@@ -18,7 +18,7 @@ const ChatContainer = ({ selectedUser, setSelectedUser }) => {
     );
   }
 
-  const messages = assets.chatMessagesDummyData[selectedUser.id] || [];
+  const messages = assets.chatMessagesDummyData[selectedUser._id] || [];
   const scrollEnd = useRef()
   useEffect(()=>{
       if(scrollEnd.current){

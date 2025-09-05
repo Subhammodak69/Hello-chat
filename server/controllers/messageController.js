@@ -1,28 +1,47 @@
-import Message from "../models/message.js";
+import Message from "../models/Message.js";
+import User from "../models/User.js";
 import cloudinary from "../lib/cloudinary.js";
 import { io, userSocketMap } from "../server.js";
 
-// Get all users except the logged in user
-export const getUsersForSidebar = async (req, res)=>{
-    try{
-        const userId = req.user._id;
-        const filteredUsers = await User.find({_id: {$ne: userId}}).select("-password");
 
-        //Count number of messages not seen
-        const unseenMessages ={}
-        const promises = filteredUsers.map(async ()=>{
-            const messages = await Message.find({senderId: user._id, reiceiverId: userId, seen: false})
-            if(messages.length > 0){
-                unseenMessages[user._id] = messages.length;
-            }
-        })
-        await Promise.all(promises);
-        res.json({success: true, users: filteredUsers, unseenMessages})
+// Get all users except the logged in user
+export const getUsersForSidebar = async (req, res) => {
+  try {
+    console.log("get................................");
+    const userId = req.user._id;
+    console.log("user_id: " + userId);
+
+    try {
+      const allUsers = await User.find().select("-password");
+      console.log("All users:", allUsers, "Count:", allUsers.length);
     } catch (error) {
-        console.log(error.message);
-        res.json({success: false, message: error.message})
+      console.log(error.message);
     }
-}
+
+    const filteredUsers = await User.find({ _id: { $ne: userId } }).select("-password");
+    console.log("Filtered users:", filteredUsers, "Count:", filteredUsers.length);
+
+    // Count number of unseen messages from each user to current user
+    const unseenMessages = {};
+
+    const promises = filteredUsers.map(async (user) => {
+      const messages = await Message.find({
+        senderId: user._id,
+        receiverId: userId,  // fixed typo here
+        seen: false,
+      });
+      if (messages.length > 0) {
+        unseenMessages[user._id] = messages.length;
+      }
+    });
+
+    await Promise.all(promises);
+
+    res.json({ success: true, users: filteredUsers, unseenMessages });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+};
 
 // Get all messages for selected user
 
@@ -61,7 +80,7 @@ export const markMessageAsSeen = async (req,res)=>{
 export const sendMessage = async (req, res)=>{
     try{
         const {text, image} = req.body;
-        const reiceiverId = req.params.id;
+        const reiceiverId = req.params._id;
         const senderId = req.user._id;
 
         let imageUrl;
