@@ -4,6 +4,7 @@ import { io } from "socket.io-client";
 import axios from "axios";
 
 
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const backendUrl = import.meta.env.VITE_BACKEND_URL;
 axios.defaults.baseURL = backendUrl;
 
@@ -36,6 +37,7 @@ export const AuthProvider = ({ children }) => {
         try {
             const response = await axios.post(`/api/auth/${state}`, credentials);
             const data = response.data;
+            await delay(1500);
             if (data.success) {
                 setAuthUser(data.userData);
                 connectSocket(data.userData);
@@ -57,6 +59,7 @@ export const AuthProvider = ({ children }) => {
 
     //Logout function to handle user logout and socket disconnection
     const logout = async () => {
+        await delay(1500);
         localStorage.removeItem("token");
         setToken(null);
         setAuthUser(null);

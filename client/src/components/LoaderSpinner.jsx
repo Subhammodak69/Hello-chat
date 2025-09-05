@@ -3,9 +3,9 @@ import React from 'react';
 const LoaderSpinner = () => {
   return (
     <div className="absolute left-[49%] top-[50%] h-auto">
-      <svg className="animate-spin -ml-1 mr-3 h-8 w-8 text-purple-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <svg className="animate-spin -ml-1 mr-3 h-8 w-8 text-purple-900" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
         <circle 
-          className="opacity-25" 
+          className="opacity-50" 
           cx="12" cy="12" r="10" 
           stroke="currentColor" strokeWidth="4"></circle>
         <path 

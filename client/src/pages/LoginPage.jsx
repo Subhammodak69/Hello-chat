@@ -3,40 +3,52 @@ import logoImg from '../assets/message.png';
 import arrow_icon from '../assets/left-arrow.png';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from "react-router-dom";
+import LoaderSpinner from '../components/LoaderSpinner'
+
 
 const LoginPage = () => {
-  const [currState, setCurrState] = useState("Sign up")
-  const [fullName, setFullName] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [bio, setBio] = useState("")
+  const [currState, setCurrState] = useState("Sign up");
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [bio, setBio] = useState("");
   const [isDataSubmitted, setIsDataSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const { login, authUser } = useContext(AuthContext)
+  const { login, authUser } = useContext(AuthContext);
   const navigate = useNavigate();
-  // Redirect if the user is already logged in
+
   useEffect(() => {
     if (authUser) {
       navigate("/", { replace: true });
     }
   }, [authUser, navigate]);
 
-  const onSubmitHandler = (event) => {
+  const onSubmitHandler = async (event) => {
     event.preventDefault();
 
-    if (currState === 'Sign up' && !isDataSubmitted) {
-      setIsDataSubmitted(true)
-      return
-    }
-    login(currState === "Sign up" ? 'signup' : 'login', {
-      fullName, email, password, bio
-    }, navigate)
-  }
-  return (
-    <div className='min-h-screen bg-cover bg-center flex items-center justify-center gap-8 sm:justify-evenly max-sm:flex-col backdrop-blur-2xl'>
-      {/* ----------left side---------- */}
-      <img src={logoImg} alt='' className='w-[min(30vw,250px)]' />
+    setLoading(true);
 
+    if (currState === 'Sign up' && !isDataSubmitted) {
+      setIsDataSubmitted(true);
+      setLoading(false);
+      return;
+    }
+
+    await login(
+      currState === "Sign up" ? 'signup' : 'login',
+      { fullName, email, password, bio },
+      navigate
+    );
+
+    setLoading(false);
+  };
+
+  return (<>
+    <div className={`min-h-screen bg-cover bg-center flex items-center justify-center gap-8 sm:justify-evenly max-sm:flex-col relative
+      ${loading ? 'blur-[1px] pointer-events-none' : 'pointer-events-auto'}`}>
+        {/* ----------left side---------- */}
+      <img src={logoImg} alt="" className="w-[min(30vw,250px)]" />
       {/* ----------right side---------- */}
       <form onSubmit={onSubmitHandler} className='border-2 bg-white/8 text-white border-white-300 p-6 flex flex-col gap-6 rounded-lg shadow-lg'>
         <h2 className='font-medium text-2xl flex justify-between items-center'>
@@ -80,7 +92,14 @@ const LoginPage = () => {
         </div>
       </form>
     </div>
+    {/* Loader Overlay */}
+    {loading && (
+      <div className="fixed inset-0 z-50 flex justify-center items-center bg-opacity-30 backdrop-blur-sm pointer-events-auto">
+        <LoaderSpinner />
+      </div>
+    )}
+  </>
   )
 }
 
-export default LoginPage
+export default LoginPage;

@@ -42,10 +42,9 @@ const ProfilePage = () => {
   };
 
   return (
+    <>
     <div className='min-h-screen w-[100%] bg-cover bg-no-repeat flex items-center justify-center'>
       <div className='w-5/6 max-w-2xl backdrop-blur-2xl text-gray-300 border-2 border-gray-600 flex items-center justify-between max-sm:flex-col max-sm: rounded-lg'>
-        {loading && <LoaderSpinner />}
-
         <form onSubmit={handleSubmit} className='flex flex-col w-[-webkit-fill-available] gap-5 p-10 flex-1'>
           <h1 className='m-auto text-lg text-black font-bold text-[25px] flex gap-2 items-center'>
             <img src={arrow_icon} onClick={() => navigate('/')} alt='' className='max-w-5 max-h-5 cursor-pointer absolute left-[4%]' />
@@ -79,6 +78,12 @@ const ProfilePage = () => {
         </div>
       </div>
     </div>
+    {loading && (
+      <div className="fixed inset-0 z-50 flex justify-center items-center bg-opacity-30 backdrop-blur-sm pointer-events-auto">
+        <LoaderSpinner />
+      </div>
+    )}
+    </>
   )
 }
 

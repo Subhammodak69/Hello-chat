@@ -46,12 +46,12 @@ export const login = async (req, res) =>{
             res.json({success: false, message: "Invalid Password."}) 
         }
 
-        const token = generateToken(newUser._id)
+        const token = generateToken(userData._id)
 
-        res.json({success: true, userData: newUser, token, message: "Login Successfully."})
+        res.json({success: true, userData: userData, token, message: "Login Successfully."})
 
     } catch (error) {
-        res.json({success: false, message: "Account Created Successfully."}) 
+        res.json({success: false, message: error.message}) 
     }
 }
 

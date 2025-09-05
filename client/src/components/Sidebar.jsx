@@ -1,15 +1,18 @@
-import React, {useRef, useEffect, useState } from 'react'
+import React, {useRef, useEffect, useState, useContext } from 'react'
 import logoImg from '../assets/message.png';
 import { useNavigate } from 'react-router-dom';
 import assets from '../assets/assets';
 import avatar_icon from '../assets/avatar.avif';
 import logoutIcon from '../assets/turn-off.png';
 import ProfileIcon from '../assets/user.png';
+import { AuthContext } from '../context/AuthContext';
+import LoaderSpinner from '../components/LoaderSpinner'
 
 
 const Sidebar = ({ selectedUser, setSelectedUser }) => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
   const dropdownRef = useRef(null);
 
   // Close dropdown if click is outside of dropdownRef element
@@ -26,8 +29,26 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
     };
   }, [dropdownRef]);
 
+    const { logout } = useContext(AuthContext);
+
+  // Wrapper for logout to handle loading
+  const handleLogout = async () => {
+    setLoading(true);  // Show loader
+    try {
+      await logout();  // Wait for logout process to finish
+      // Optionally navigate somewhere after logout if not handled inside logout
+      navigate('/login');
+    } catch (error) {
+      // Handle errors here if needed
+      console.error('Logout failed:', error);
+    } finally {
+      setLoading(false); // Hide loader
+    }
+  };
+
 
   return (
+    <>
     <div className={`bg-[#000ea6]/10 h-full p-5 rounded overflow-y-scroll text-white ${selectedUser ? "max-md:hidden" : ''}`}>
       <div className='pb-5'>
         <div className='flex justify-between items-start'>
@@ -56,7 +77,7 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
                 Profile
               </p>
               <hr className="my-2 border-t border-grey-500" />
-              <p className="cursor-pointer flex gap-[5px] text-sm">
+              <p onClick={handleLogout} className="cursor-pointer flex gap-[5px] text-sm">
                 <img src={logoutIcon} alt='' className='max-w-5 bg-white rounded-full' />
                 Logout
               </p>
@@ -110,6 +131,12 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
 
       </div>
     </div>
+    {loading && (
+      <div className="fixed inset-0 z-50 flex justify-center items-center bg-opacity-30 backdrop-blur-sm pointer-events-auto">
+        <LoaderSpinner />
+      </div>
+    )}
+    </>
   )
 }
 
