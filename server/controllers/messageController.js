@@ -37,19 +37,16 @@ export const getUsersForSidebar = async (req, res) => {
 // get userdata
 export const getUserData = async (req, res) => {
     const { id } = req.params; // match your route param :id
-    console.log("userid-: "+id);
     try {
         if (!id) {
             return res.status(400).json({ success: false, message: "User ID not provided" });
         }
         const userObject = await User.findById(id);
-        console.log("userdata:-: " + userObject);
         if (!userObject) {
             return res.status(404).json({ success: false, message: "User not found" });
         }
         res.json({ success: true, user: userObject }); // key 'user' to match frontend expectation
     } catch (error) {
-        console.error("Error fetching user data:", error);
         res.status(500).json({ success: false, message: "Server error" });
     }
 };
@@ -89,33 +86,42 @@ export const markMessageAsSeen = async (req, res) => {
 
 // Send message to selected user
 export const sendMessage = async (req, res) => {
-    try {
-        const { text, image } = req.body;
-        const reiceiverId = req.params._id;
-        const senderId = req.user._id;
+  try {
+    const { text, image } = req.body;
+    const receiverId = req.params.id;
+    const senderId = req.user._id;
 
-        let imageUrl;
-        if (image) {
-            const uploadResponse = await cloudinary.uploader.upload(image)
-            imageUrl = uploadResponse.secure_url;
-        }
-
-        const newMessage = await Message.create({
-            senderId,
-            reiceiverId,
-            text,
-            image: imageUrl
-        })
-
-        //emit the new message to the new receiver's socket
-        const receiverSocketId = userSocketMap[reiceiverId];
-        if (receiverSocketId) {
-            io.to(receiverSocketId).emit("newMessage", newMessage)
-        }
-        res.json({ success: true, newMessage });
-
-    } catch (error) {
-        console.log(error.message);
-        res.json({ success: false, message: error.message })
+    // Optional: verify receiver user exists
+    const receiverUser = await User.findById(receiverId);
+    if (!receiverUser) {
+      return res.status(404).json({ success: false, message: "Receiver user not found" });
     }
-}
+
+    let imageUrl;
+    if (image) {
+      const uploadResponse = await cloudinary.uploader.upload(image);
+      imageUrl = uploadResponse.secure_url;
+    }
+
+    const newMessage = await Message.create({
+      senderId,
+      reiceiverId:receiverUser._id,
+      text,
+      image: imageUrl
+    });
+    console.log(newMessage);
+    const senderData = await User.findById(newMessage.senderId);
+    console.log("sender=>:"+senderData);
+    // Emit new message to receiver's socket if connected
+    const receiverSocketId = userSocketMap[receiverId];
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("newMessage", newMessage);
+    }
+
+    res.json({ success: true, newMessage: newMessage, senderData: senderData });
+
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

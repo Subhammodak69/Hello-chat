@@ -32,10 +32,8 @@ export const ChatProvider = ({ children }) => {
     //Function to get the user details
     const fetchUserData = async (userId) => {
         try {
-            console.log("helllooooo asloooo");
             const { data } = await axios.get(`/api/messages/user-data/${userId}`); // API endpoint ideally for user details
             if (data.success) {
-                console.log(data.user);
                 setSelectedUserData(data.user); // Set user object, not entire response object
             }
         } catch (error) {
@@ -63,17 +61,23 @@ export const ChatProvider = ({ children }) => {
 
     const sendMessage = async (messageData) => {
         try {
-            const { data } = await axios.post(`/api/messages/send/${selectedUser._id}`, messageData);
+            const { data } = await axios.post(`/api/messages/send/${selectedUser}`, messageData);
             if (data.success) {
-                setMessages((prevMessages) => [...prevMessages, data.newMessage])
-            }
-            else {
+                const messageWithSender = {
+                    ...data.newMessage,
+                    sender_name: data.senderData.fullName,
+                    sender_pic: data.senderData.profilePic,
+                };
+                console.log(messageWithSender);
+                setMessages((prevMessages) => [...prevMessages, messageWithSender]);
+            } else {
                 toast.error(data.message);
             }
         } catch (error) {
-            toast.error(error.message)
+            toast.error(error.message);
         }
-    }
+    };
+
 
     // Function to subscribe to messages for selected user
 
@@ -105,7 +109,7 @@ export const ChatProvider = ({ children }) => {
 
 
     const value = {
-        messages, users, selectedUser,fetchUserData, selectedUserData,setSelectedUserData, getUsers, setMessages, sendMessage, setSelectedUser, unseenMessages, setUnseenMessages
+        messages, users, selectedUser, fetchUserData, selectedUserData, getMessages, setSelectedUserData, getUsers, setMessages, sendMessage, setSelectedUser, unseenMessages, setUnseenMessages
     }
     return (
         <ChatContext.Provider value={value}>

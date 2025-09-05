@@ -14,13 +14,13 @@ import toast from 'react-hot-toast';
 const ChatContainer = () => {
   const { messages, selectedUser, setSelectedUser, sendMessage, getMessages, selectedUserData, setSelectedUserData, fetchUserData } = useContext(ChatContext);
   const { authUser, onlineUsers } = useContext(AuthContext);
-
   const [input, setInput] = useState('');
   const scrollEnd = useRef();
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (input.trim() === " ") return null;
+    console.log(input.trim);
     await sendMessage({ text: input.trim() });
     setInput("");
   }
@@ -43,7 +43,7 @@ const ChatContainer = () => {
 
   useEffect(() => {
     if (selectedUser) {
-      console.log("sdhgdvhdgsvgvheloooooo");
+      getMessages(selectedUser);
       fetchUserData(selectedUser);
     } else {
       setSelectedUserData(null); // clear when no user selected
@@ -94,10 +94,10 @@ const ChatContainer = () => {
                   />
                 ) : (
                   <p className="p-2 max-w-[300px] md:text-sm font-light rounded-lg mb-2 break-all bg-violet-500/30 text-white rounded-br-none">
-                    {msg.message}
+                    {msg.text}
                   </p>
                 )}
-                <span className="text-xs text-white-500">{formatMessageTime(msg.timestamp)}</span>
+                <span className="text-xs text-white-500">{formatMessageTime(msg.createdAt)}</span>
               </div>
             </div>
           ) : (
@@ -121,10 +121,10 @@ const ChatContainer = () => {
                   />
                 ) : (
                   <p className="p-2 max-w-[300px] md:text-sm font-light rounded-lg mb-2 break-all bg-stone-800 text-white rounded-bl-none">
-                    {msg.message}
+                    {msg.text}
                   </p>
                 )}
-                <span className="text-xs text-white-500">{formatMessageTime(msg.timestamp)}</span>
+                <span className="text-xs text-white-500">{formatMessageTime(msg.createdAt)}</span>
               </div>
             </div>
           )
