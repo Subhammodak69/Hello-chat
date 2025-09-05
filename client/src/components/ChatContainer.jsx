@@ -11,7 +11,7 @@ import { formatMessageTime } from '../lib/utils';
 const ChatContainer = ({ selectedUser, setSelectedUser }) => {
   if (!selectedUser) {
     return (
-      <div className='flex flex-col items-center justify-center gap-2 text-grey-500 max-md:hidden'>
+      <div className='flex flex-col bg-[#c8d8ff]/5 items-center justify-center gap-2 text-grey-500 max-md:hidden'>
         <img src={logoImg} alt="" className='max-w-16' />
         <p className='text-lg font-medium text-white'>Chat anytime anywhere</p>
       </div>

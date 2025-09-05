@@ -28,7 +28,6 @@ const LoginPage = () => {
       setIsDataSubmitted(true)
       return
     }
-    console.log(currState);
     login(currState === "Sign up" ? 'signup' : 'login', {
       fullName, email, password, bio
     }, navigate)
