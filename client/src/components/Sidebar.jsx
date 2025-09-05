@@ -37,8 +37,6 @@ const Sidebar = () => {
 
   const { logout, onlineUsers } = useContext(AuthContext);
 
-  console.log("online users : " + onlineUsers);
-
   useEffect(() => {
     getUsers();
   }, []);
@@ -116,7 +114,7 @@ const Sidebar = () => {
               <div
                 key={user._id}
                 onClick={() => {
-                  setSelectedUser(user);
+                  setSelectedUser(user._id);
                 }}
                 className={`relative flex items-center gap-2 p-2 pl-4 rounded cursor-pointer max-sm:text-sm ${selectedUser && selectedUser._id === user._id ? 'bg-[#282142]/50' : ''
                   }`}
