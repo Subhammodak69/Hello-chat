@@ -5,7 +5,9 @@ import cloudinary from "../lib/cloudinary.js";
 
 //Signup a new user
 
-export const signup = async ()=>{
+export const signup = async (req, res)=>{
+    console.log(req.body);
+    
     const { fullName, email, password, bio } = req.body;
 
     try {
@@ -20,14 +22,16 @@ export const signup = async ()=>{
         const hashedPassword = await bcrypt.hash(password, salt);
 
         const newUser = await User.create({
-            fullName, email, hashedPassword, bio
+            fullName, email, password: hashedPassword, bio
         });
+        console.log(newUser);
         const token = generateToken(newUser._id)
+        console.log(token);
 
         res.json({success: true, userData: newUser, token, message: "Account Created Successfully."})
     } catch (error) {
         console.log(error.message);
-        res.json({success: false, message: "Account Created Successfully."}) 
+        res.json({ success: false, message: error.message }); // instead of "Account Created Successfully."
     }
 }
 
@@ -68,6 +72,8 @@ export const checkAuth = (req,res)=>{
 
 export const updateProfile = async (req, res)=>{
     try{
+        console.log(req.body);
+
         const { profilePic, bio, fullName } = req.body;
 
         const userId =req.user._id;

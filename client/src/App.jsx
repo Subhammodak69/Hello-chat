@@ -7,26 +7,43 @@ import { Toaster } from "react-hot-toast";
 import { AuthContext } from "./context/AuthContext.jsx";
 
 
-const App = () => {
-  const {authUser} = useContext(AuthContext)
-  return (
-    <div style={gradientStyle}>
-      <Toaster>
-        <Routes>
-          <Route path="/" element={authUser ? <HomePage /> : <Navigate to= "/login"/>} />
-          <Route path="/login" element={!authUser ? <LoginPage /> : <Navigate to="/" />} />
-          <Route path="/profile" element={authUser ? <ProfilePage /> : <Navigate to= "/login"/>} />
-        </Routes>
-      </Toaster>
-    </div>
-  )
-}
-const gradientStyle = {
-  background: 'linear-gradient(90deg, rgb(43, 142, 255), rgb(0 90 192 / 78%), rgb(10 29 157))',
-  height: '100vh',
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
+const ProtectedRoute = ({ children }) => {
+  const { authUser } = useContext(AuthContext);
+  if (!authUser) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
 };
 
-export default App
+const App = () => {
+  return (
+    <div className="h-screen flex justify-center items-center bg-gradient-to-r from-[#2b8eff] via-[#005ac0c7] to-[#0a1d9d]">
+      <Toaster />
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <HomePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/login"
+          element={<LoginPage />}
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </div>
+  );
+};
+
+
+export default App;
