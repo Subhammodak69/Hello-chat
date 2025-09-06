@@ -10,7 +10,6 @@ import { ChatContext } from "../context/ChatContext"
 import { AuthContext } from "../context/AuthContext"
 import toast from 'react-hot-toast';
 
-
 const ChatContainer = () => {
   const { messages, selectedUser, setSelectedUser, sendMessage, getMessages, selectedUserData, setSelectedUserData, fetchUserData } = useContext(ChatContext);
   const { authUser, onlineUsers } = useContext(AuthContext);
@@ -19,24 +18,22 @@ const ChatContainer = () => {
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (input.trim() === " ") return null;
-    console.log(input.trim);
+    if (input.trim() === "") return null;
     await sendMessage({ text: input.trim() });
     setInput("");
   }
 
-  //Handle sending  a image
+  //Handle sending a image
   const handleSendImage = async (e) => {
     const file = e.target.files[0];
     if (!file || !file.type.startsWith("image/")) {
-
       toast.error("select a image file...")
       return;
     }
     const reader = new FileReader();
     reader.onloadend = async () => {
       await sendMessage({ image: reader.result })
-      e.target.value = " "
+      e.target.value = ""
     }
     reader.readAsDataURL(file)
   }
@@ -50,6 +47,32 @@ const ChatContainer = () => {
     }
   }, [selectedUser]);
 
+  // Auto scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (scrollEnd.current) {
+      scrollEnd.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
+
+  // Also scroll when component mounts or user changes
+  useEffect(() => {
+    if (scrollEnd.current) {
+      scrollEnd.current.scrollIntoView({ behavior: "instant" });
+    }
+  }, [selectedUser]);
+
+  // Helper function to check if message is from current user
+  const isMyMessage = (msg) => {
+    // Handle different possible message structures
+    const senderId = msg.senderId?._id || msg.senderId;
+    const currentUserId = authUser?._id;
+    
+    console.log("Message sender ID:", senderId);
+    console.log("Current user ID:", currentUserId);
+    console.log("Is my message:", senderId === currentUserId);
+    
+    return senderId === currentUserId;
+  };
 
   if (!selectedUser) {
     return (
@@ -59,6 +82,7 @@ const ChatContainer = () => {
       </div>
     );
   }
+
   return (
     <div className='h-full overflow-scroll relative backdrop-blur-lg '>
       {/* Header */}
@@ -71,18 +95,20 @@ const ChatContainer = () => {
           )}
         </div>
         <div>
-          <img onClick={() => setSelectedUser(null)} src={arrow_icon} alt='' className='md:hidden max-w-7' />
+          <img onClick={() => setSelectedUser(null)} src={arrow_icon} alt='' className='md:hidden max-w-7 cursor-pointer' />
           <img src={help} alt="" className='max-md:hidden max-w-5' />
         </div>
       </div>
 
       {/* Chat Area */}
       <div className='flex flex-col h-[calc(100%-120px)] overflow-y-scroll p-3 pb-6'>
-        {messages.map((msg, index) =>
-          msg.senderId === authUser._id ? (
-            // Sender: right-aligned, green bubble
+        {messages.map((msg, index) => {
+          const isCurrentUserMessage = isMyMessage(msg);
+          
+          return isCurrentUserMessage ? (
+            // My messages: right-aligned, violet bubble
             <div
-              key={index}
+              key={msg._id || index}
               className="flex justify-end items-end mb-2"
             >
               <div className="flex flex-col items-end">
@@ -101,18 +127,18 @@ const ChatContainer = () => {
               </div>
             </div>
           ) : (
-            // Receiver: left-aligned, avatar and name above message
+            // Other user messages: left-aligned, gray bubble with avatar
             <div
-              key={index}
+              key={msg._id || index}
               className="flex justify-start items-start mb-2"
             >
               <img
-                src={msg.sender_pic}
+                src={msg.sender_pic || msg.senderData?.profilePic || avatar}
                 alt=""
                 className="w-[32px] h-[32px] rounded-full mr-2"
               />
               <div className="flex flex-col items-start">
-                <span className="text-xs font-semibold text-blue-400 mb-1">{msg.sender_name}</span>
+
                 {msg.image ? (
                   <img
                     src={msg.image}
@@ -127,17 +153,29 @@ const ChatContainer = () => {
                 <span className="text-xs text-white-500">{formatMessageTime(msg.createdAt)}</span>
               </div>
             </div>
-          )
-        )}
-        <div ref={scrollEnd} ></div>
+          );
+        })}
+        <div ref={scrollEnd}></div>
       </div>
+
       {/*------------bottom area start------- */}
       <div className='absolute bottom-0 left-0 right-0 flex items-center gap-3 p-3'>
         <div className='flex-1 flex items-center bg-gray-100/12 px-3 rounded-full'>
-          <input onChange={(e) => setInput(e.target.value)} value={input} onKeyDown={(e) => e.key === "Enter" ? handleSendMessage(e) : null}
-            type='text' placeholder='Send a message' className='flex-1 text-sm p-3 border-none rounded-lg outline-none text-white placeholder-gray-800' />
-          <input onChange={handleSendImage}
-            type='file' id="image" accept='*' hidden />
+          <input 
+            onChange={(e) => setInput(e.target.value)} 
+            value={input} 
+            onKeyDown={(e) => e.key === "Enter" ? handleSendMessage(e) : null}
+            type='text' 
+            placeholder='Send a message' 
+            className='flex-1 text-sm p-3 border-none rounded-lg outline-none text-white placeholder-gray-800 bg-transparent' 
+          />
+          <input 
+            onChange={handleSendImage}
+            type='file' 
+            id="image" 
+            accept='image/*' 
+            hidden 
+          />
           <label htmlFor="image">
             <img src={galary} alt='' className='w-5 mr-2 cursor-pointer' />
           </label>
@@ -148,6 +186,5 @@ const ChatContainer = () => {
     </div>
   );
 };
-
 
 export default ChatContainer

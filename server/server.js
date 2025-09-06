@@ -21,22 +21,36 @@ export const  io = new Server(server,{
 export const userSocketMap = {}; //{ userId: socketId }
 
 //Socket.io connection handler
-io.on("connection", (socket)=>{
+// In your socket connection handler, fix the socket ID storage:
+
+io.on("connection", (socket) => {
     const userId = socket.handshake.query.userId;
     console.log("User Connected", userId);
 
-    if (userId) userSocketMap[userId] = socket._id;
+    if (userId && userId !== "undefined") {
+        userSocketMap[userId] = socket.id; // Use socket.id instead of socket._id
+    }
 
-    // Emit online users to all connected client
+    // Emit online users to all connected clients
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
 
-    socket.on("disconnect", ()=>{
+    socket.on("disconnect", () => {
         console.log("User disconnected", userId);
-        delete userSocketMap[userId];
-        io.emit("getOnlineUsers", Object.keys(userSocketMap))
-    })
+        if (userId) {
+            delete userSocketMap[userId];
+        }
+        io.emit("getOnlineUsers", Object.keys(userSocketMap));
+    });
 
-}) 
+    // Handle manual logout
+    socket.on("userLogout", () => {
+        if (userId) {
+            delete userSocketMap[userId];
+            io.emit("getOnlineUsers", Object.keys(userSocketMap));
+        }
+    });
+});
+
 
 //Middleware setup
 
