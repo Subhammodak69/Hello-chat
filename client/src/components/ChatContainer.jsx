@@ -10,7 +10,7 @@ import { ChatContext } from "../context/ChatContext"
 import { AuthContext } from "../context/AuthContext"
 import toast from 'react-hot-toast';
 
-const ChatContainer = () => {
+const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
   const { messages, selectedUser, setSelectedUser, sendMessage, getMessages, selectedUserData, setSelectedUserData, fetchUserData } = useContext(ChatContext);
   const { authUser, onlineUsers } = useContext(AuthContext);
   const [input, setInput] = useState('');
@@ -61,16 +61,32 @@ const ChatContainer = () => {
     }
   }, [selectedUser]);
 
+
+const isMobile = useIsMobile(); // Call your custom hook here
+
+function useIsMobile(breakpoint = 786) {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < breakpoint);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < breakpoint);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [breakpoint]);
+
+  return isMobile;
+}
+
+
   // Helper function to check if message is from current user
   const isMyMessage = (msg) => {
     // Handle different possible message structures
     const senderId = msg.senderId?._id || msg.senderId;
     const currentUserId = authUser?._id;
-    
+
     console.log("Message sender ID:", senderId);
     console.log("Current user ID:", currentUserId);
     console.log("Is my message:", senderId === currentUserId);
-    
+
     return senderId === currentUserId;
   };
 
@@ -87,7 +103,14 @@ const ChatContainer = () => {
     <div className='h-full overflow-scroll relative backdrop-blur-lg '>
       {/* Header */}
       <div className='flex items-center justify-between gap-3 py-3 mx-4 border-b border-stone-500'>
-        <div className='flex items-center gap-2'>
+        <div className="flex items-center gap-2"
+          onClick={() => {
+            if (isMobile) {
+              console.log("is triggered");
+              setIsOnProfile(true);
+            }
+          }}
+        >
           <img src={selectedUserData?.profilePic || avatar} alt='User Avatar' className='w-10 h-10 rounded-full object-cover' />
           <h1 className='m-auto text-lg text-black font-bold'>{selectedUserData?.fullName || "Loading..."}</h1>
           {selectedUserData && onlineUsers.includes(selectedUserData._id) && (
@@ -104,7 +127,7 @@ const ChatContainer = () => {
       <div className='flex flex-col h-[calc(100%-120px)] overflow-y-scroll p-3 pb-6'>
         {messages.map((msg, index) => {
           const isCurrentUserMessage = isMyMessage(msg);
-          
+
           return isCurrentUserMessage ? (
             // My messages: right-aligned, violet bubble
             <div
@@ -161,20 +184,20 @@ const ChatContainer = () => {
       {/*------------bottom area start------- */}
       <div className='absolute bottom-0 left-0 right-0 flex items-center gap-3 p-3'>
         <div className='flex-1 flex items-center bg-gray-100/12 px-3 rounded-full'>
-          <input 
-            onChange={(e) => setInput(e.target.value)} 
-            value={input} 
+          <input
+            onChange={(e) => setInput(e.target.value)}
+            value={input}
             onKeyDown={(e) => e.key === "Enter" ? handleSendMessage(e) : null}
-            type='text' 
-            placeholder='Send a message' 
-            className='flex-1 text-sm p-3 border-none rounded-lg outline-none text-white placeholder-gray-800 bg-transparent' 
+            type='text'
+            placeholder='Send a message'
+            className='flex-1 text-sm p-3 border-none rounded-lg outline-none text-white placeholder-gray-800 bg-transparent'
           />
-          <input 
+          <input
             onChange={handleSendImage}
-            type='file' 
-            id="image" 
-            accept='image/*' 
-            hidden 
+            type='file'
+            id="image"
+            accept='image/*'
+            hidden
           />
           <label htmlFor="image">
             <img src={galary} alt='' className='w-5 mr-2 cursor-pointer' />
