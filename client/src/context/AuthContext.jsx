@@ -55,14 +55,14 @@ export const AuthProvider = ({ children }) => {
     // Logout function to handle user logout and socket disconnection
     const logout = async () => {
         await delay(1500);
-        
+
         // Emit logout event before disconnecting
         if (socket) {
             socket.emit("userLogout");
             socket.disconnect();
             setSocket(null);
         }
-        
+
         localStorage.removeItem("token");
         setToken(null);
         setAuthUser(null);
@@ -89,12 +89,14 @@ export const AuthProvider = ({ children }) => {
     // Connect socket function to handle socket connection and online users updates
     const connectSocket = (userData) => {
         if (!userData || socket?.connected) return;
-        
+
         const newSocket = io(backendUrl, {
-            query: {
-                userId: userData._id,
-            }
+            auth: {
+                userId: userData._id
+            },
+            transports: ["websocket"] // Optional: force WebSocket to avoid polling errors
         });
+
 
         // Set socket immediately
         setSocket(newSocket);

@@ -14,8 +14,19 @@ const server = http.createServer(app)
 
 //Initialize socket.io server
 export const io = new Server(server, {
-    cors: { origin: "*" }
-})
+    cors: { origin: "*" },
+    transports: ["websocket"], // Optional, to prevent polling issues
+});
+
+// ✅ Middleware to extract userId from auth
+io.use((socket, next) => {
+    const userId = socket.handshake.auth.userId;
+    if (!userId) {
+        return next(new Error("Invalid user ID"));
+    }
+    socket.userId = userId;
+    next();
+});
 
 // Store Online user
 export const userSocketMap = {}; //{ userId: socketId }
@@ -24,14 +35,13 @@ export const userSocketMap = {}; //{ userId: socketId }
 // In your socket connection handler, fix the socket ID storage:
 
 io.on("connection", (socket) => {
-    const userId = socket.handshake.query.userId;
+    const userId = socket.userId;
     console.log("User Connected", userId);
 
     if (userId && userId !== "undefined") {
-        userSocketMap[userId] = socket.id; // Use socket.id instead of socket._id
+        userSocketMap[userId] = socket.id;
     }
 
-    // Emit online users to all connected clients
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
 
     socket.on("disconnect", () => {
@@ -42,7 +52,6 @@ io.on("connection", (socket) => {
         io.emit("getOnlineUsers", Object.keys(userSocketMap));
     });
 
-    // Handle manual logout
     socket.on("userLogout", () => {
         if (userId) {
             delete userSocketMap[userId];

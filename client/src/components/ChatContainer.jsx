@@ -11,6 +11,7 @@ import { AuthContext } from "../context/AuthContext"
 import toast from 'react-hot-toast';
 import emojiIcon from '../assets/emoji.png'
 import EmojiPicker from 'emoji-picker-react'
+import threeDot from '../assets/threedot.png'
 
 
 const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
@@ -18,6 +19,8 @@ const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
   const { authUser, onlineUsers } = useContext(AuthContext);
   const [input, setInput] = useState('');
   const scrollEnd = useRef();
+  const [hovered, setHovered] = useState(false);
+  const [clicked, setClicked] = useState(false);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -26,14 +29,14 @@ const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
     await sendMessage({ text: input.trim() });
   }
 
- const [showPicker, setShowPicker] = useState(false)
+  const [showPicker, setShowPicker] = useState(false)
   const pickerRef = useRef()
 
   const onEmojiClick = (emojiData) => {
-  setInput((prev) => prev + emojiData.emoji)
-  setShowPicker(false)
-  inputRef.current?.focus()   // Focus input to continue typing or press Enter
-}
+    setInput((prev) => prev + emojiData.emoji)
+    setShowPicker(false)
+    inputRef.current?.focus()   // Focus input to continue typing or press Enter
+  }
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -84,6 +87,17 @@ const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
       scrollEnd.current.scrollIntoView({ behavior: "instant" });
     }
   }, [selectedUser]);
+
+    // Close delete popup on outside click
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (clicked && messageRef.current && !messageRef.current.contains(event.target)) {
+        setClicked(null);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [clicked, setClicked]);
 
 
   const isMobile = useIsMobile(); // Call your custom hook here
@@ -158,18 +172,41 @@ const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
               key={msg._id || index}
               className="flex justify-end items-end mb-2"
             >
-              <div className="flex flex-col items-end">
-                {msg.image ? (
-                  <img onClick={() => window.open(msg.image)}
-                    src={msg.image}
-                    alt=""
-                    className="max-w-[150px] border border-gray-700 rounded-lg overflow-hidden mb-2 cursor-pointer"
-                  />
-                ) : (
-                  <p className="p-2 max-w-[300px] md:text-sm font-light rounded-lg mb-2 break-all bg-violet-500/30 text-white rounded-br-none">
-                    {msg.text}
-                  </p>
-                )}
+              <div className="flex flex-col items-end cursor-pointer" onClick={() => setHovered(msg._id || index)} onMouseEnter={() => setHovered(msg._id || index)} onMouseLeave={() => setHovered(null)}>
+                <div className='flex items-center'>
+                  {clicked === (msg._id || index) && (
+                    <div className='bg-stone-800 p-[2px_10px] text-white rounded cursor-pointer'>
+                      <button className='cursor-pointer' onClick={() => {
+                        onDelete(msg._id || index)
+                        setClicked(null)
+                        }}>Delete</button>
+                    </div>
+                  )}
+                  {(hovered === (msg._id || index)) && (
+                    <img
+                      src={threeDot}
+                      alt=''
+                      className='w-4 h-4'
+                      onMouseEnter={() =>setClicked(clicked === (msg._id || index) ? null : (msg._id || index)) }
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent bubbling if needed
+                        setClicked(clicked === (msg._id || index) ? null : (msg._id || index));
+                      }}
+                    />
+                  )}
+
+                  {msg.image ? (
+                    <img onClick={() => window.open(msg.image)}
+                      src={msg.image}
+                      alt=""
+                      className="max-w-[150px] border border-gray-700 rounded-lg overflow-hidden mb-2 cursor-pointer"
+                    />
+                  ) : (
+                    <p className="p-2 max-w-[300px] md:text-sm font-light rounded-lg mb-2 break-all bg-violet-500/30 text-white rounded-br-none">
+                      {msg.text}
+                    </p>
+                  )}
+                </div>
                 <span className="text-xs text-white-500">{formatMessageTime(msg.createdAt)}</span>
               </div>
             </div>
@@ -182,7 +219,7 @@ const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
               <img
                 src={msg.sender_pic || msg.senderData?.profilePic || avatar}
                 alt=""
-                className="w-[32px] h-[32px] rounded-full mr-2"
+                className="w-[20px] h-[20px] rounded-full mr-2"
               />
               <div className="flex flex-col items-start">
 
@@ -210,18 +247,18 @@ const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
         <div className='flex-1 flex items-center bg-gray-100/12 px-3 rounded-full'>
 
 
-         <button onClick={() => setShowPicker((v) => !v)} aria-label="Emoji picker">
-        <img src={emojiIcon} alt="😊" className="w-6 h-6 cursor-pointer" />
-      </button>
+          <button onClick={() => setShowPicker((v) => !v)} aria-label="Emoji picker">
+            <img src={emojiIcon} alt="😊" className="w-6 h-6 cursor-pointer" />
+          </button>
 
-      {showPicker && (
-        <div
-          ref={pickerRef}
-          style={{ position: 'absolute', bottom: '50px', left: '10px', zIndex: 1000 }}
-        >
-          <EmojiPicker onEmojiClick={onEmojiClick} />
-        </div>
-      )}
+          {showPicker && (
+            <div
+              ref={pickerRef}
+              style={{ position: 'absolute', bottom: '50px', left: '10px', zIndex: 1000 }}
+            >
+              <EmojiPicker onEmojiClick={onEmojiClick} />
+            </div>
+          )}
 
           <input
             onChange={(e) => setInput(e.target.value)}
