@@ -94,7 +94,7 @@ export const AuthProvider = ({ children }) => {
             auth: {
                 userId: userData._id
             },
-            transports: ["websocket"] // Optional: force WebSocket to avoid polling errors
+            transports: ["polling"] // Optional: force WebSocket to avoid polling errors
         });
 
 
