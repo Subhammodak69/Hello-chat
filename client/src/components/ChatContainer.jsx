@@ -9,6 +9,9 @@ import { formatMessageTime } from '../lib/utils';
 import { ChatContext } from "../context/ChatContext"
 import { AuthContext } from "../context/AuthContext"
 import toast from 'react-hot-toast';
+import emojiIcon from '../assets/emoji.png'
+import EmojiPicker from 'emoji-picker-react'
+
 
 const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
   const { messages, selectedUser, setSelectedUser, sendMessage, getMessages, selectedUserData, setSelectedUserData, fetchUserData } = useContext(ChatContext);
@@ -22,6 +25,27 @@ const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
     setInput("");
     await sendMessage({ text: input.trim() });
   }
+
+ const [showPicker, setShowPicker] = useState(false)
+  const pickerRef = useRef()
+
+  const onEmojiClick = (emojiData) => {
+  setInput((prev) => prev + emojiData.emoji)
+  setShowPicker(false)
+  inputRef.current?.focus()   // Focus input to continue typing or press Enter
+}
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target)) {
+        setShowPicker(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+
 
   //Handle sending a image
   const handleSendImage = async (e) => {
@@ -62,19 +86,19 @@ const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
   }, [selectedUser]);
 
 
-const isMobile = useIsMobile(); // Call your custom hook here
+  const isMobile = useIsMobile(); // Call your custom hook here
 
-function useIsMobile(breakpoint = 786) {
-  const [isMobile, setIsMobile] = useState(window.innerWidth < breakpoint);
+  function useIsMobile(breakpoint = 786) {
+    const [isMobile, setIsMobile] = useState(window.innerWidth < breakpoint);
 
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < breakpoint);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [breakpoint]);
+    useEffect(() => {
+      const handleResize = () => setIsMobile(window.innerWidth < breakpoint);
+      window.addEventListener("resize", handleResize);
+      return () => window.removeEventListener("resize", handleResize);
+    }, [breakpoint]);
 
-  return isMobile;
-}
+    return isMobile;
+  }
 
 
   // Helper function to check if message is from current user
@@ -163,10 +187,10 @@ function useIsMobile(breakpoint = 786) {
               <div className="flex flex-col items-start">
 
                 {msg.image ? (
-                  <img
+                  <img onClick={() => window.open(msg.image)}
                     src={msg.image}
                     alt=""
-                    className="max-w-[150px] border border-gray-700 rounded-lg overflow-hidden mb-2"
+                    className="max-w-[150px] border border-gray-700 rounded-lg overflow-hidden mb-2 cursor-pointer"
                   />
                 ) : (
                   <p className="p-2 max-w-[300px] md:text-sm font-light rounded-lg mb-2 break-all bg-stone-800 text-white rounded-bl-none">
@@ -184,6 +208,21 @@ function useIsMobile(breakpoint = 786) {
       {/*------------bottom area start------- */}
       <div className='absolute bottom-0 left-0 right-0 flex items-center gap-3 p-3'>
         <div className='flex-1 flex items-center bg-gray-100/12 px-3 rounded-full'>
+
+
+         <button onClick={() => setShowPicker((v) => !v)} aria-label="Emoji picker">
+        <img src={emojiIcon} alt="😊" className="w-6 h-6 cursor-pointer" />
+      </button>
+
+      {showPicker && (
+        <div
+          ref={pickerRef}
+          style={{ position: 'absolute', bottom: '50px', left: '10px', zIndex: 1000 }}
+        >
+          <EmojiPicker onEmojiClick={onEmojiClick} />
+        </div>
+      )}
+
           <input
             onChange={(e) => setInput(e.target.value)}
             value={input}

@@ -10,7 +10,7 @@ import { ChatContext } from '../context/ChatContext';
 
 
 const Sidebar = () => {
-  const { getUsers, users, selectedUser, setSelectedUser, unseenMessages } = useContext(ChatContext);
+  const { getUsers, users, selectedUser, setSelectedUser, unseenMessages,selectedUserData } = useContext(ChatContext);
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -116,13 +116,13 @@ const Sidebar = () => {
                 onClick={() => {
                   setSelectedUser(user._id);
                 }}
-                className={`relative flex items-center gap-2 p-2 pl-4 rounded cursor-pointer max-sm:text-sm ${selectedUser && selectedUser._id === user._id ? 'bg-[#282142]/50' : ''
-                  }`}
+                className={`relative flex items-center gap-2 p-2 pl-4 rounded cursor-pointer max-sm:text-sm ${selectedUserData && selectedUserData._id === user._id ? 'bg-[#282142]/50' : ''}`}
               >
+              
                 <img
-                  src={user?.avatar || avatar_icon}
-                  alt={user.name || 'User avatar'}
-                  className="h-[40px] aspect-[1/1] rounded-full"
+                  src={user?.profilePic || avatar_icon}
+                  alt={user.fullName || 'User avatar'}
+                  className="h-[40px] aspect-[1/1] rounded-full object-cover"
                 />
                 <div className="flex flex-col leading-5">
                   <p>{user.fullName}</p>
