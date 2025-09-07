@@ -20,7 +20,7 @@ const HomePage = () => {
 
   return (
     <div className='border w-full h-screen sm:py-[1%] sm:px-[1%]'>
-      <div className={`backdrop-blur-xl border-grey-600 md:rounded-[20px] overflow-hidden h-[100%] grid grid-cols-1 relative ${selectedUserData ? 'md:grid-cols-[1fr_1.5fr_1fr] xl:grid-cols-[1fr_2fr_1fr]':'md:grid-cols-2'}`}>
+      <div className={`backdrop-blur-xl border-grey-600 md:rounded-[20px] overflow-hidden h-[100%] grid grid-cols-1 relative ${selectedUserData ? 'md:grid-cols-[1fr_1.5fr_1fr] xl:grid-cols-[1fr_1.5fr_1fr]':'md:grid-cols-[1fr_2fr]'}`}>
         {!isOnProfile && <Sidebar />}
         {!isOnProfile && <ChatContainer isOnProfile = {isOnProfile} setIsOnProfile = {setIsOnProfile}/>}
          <RightSidebar selectedUserData={selectedUserData} isOnProfile = {isOnProfile} setIsOnProfile = {setIsOnProfile} />
