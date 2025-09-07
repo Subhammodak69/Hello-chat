@@ -136,7 +136,7 @@ function useIsMobile(breakpoint = 786) {
             >
               <div className="flex flex-col items-end">
                 {msg.image ? (
-                  <img
+                  <img onClick={() => window.open(url)}
                     src={msg.image}
                     alt=""
                     className="max-w-[150px] border border-gray-700 rounded-lg overflow-hidden mb-2"
