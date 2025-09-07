@@ -14,7 +14,7 @@ const server = http.createServer(app)
 
 //Initialize socket.io server
 export const io = new Server(server, {
-    cors: { origin: "*" },
+    cors: { origin: "https://hello-chat-five.vercel.app/" },
     transports: ["websocket"], // Optional, to prevent polling issues
 });
 

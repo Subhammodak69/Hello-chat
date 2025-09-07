@@ -91,11 +91,10 @@ export const AuthProvider = ({ children }) => {
         if (!userData || socket?.connected) return;
 
         const newSocket = io(backendUrl, {
-            auth: {
-                userId: userData._id
-            },
-            transports: ["polling"] // Optional: force WebSocket to avoid polling errors
+            auth: { userId: userData._id },
+            transports: ["websocket"], // match backend transport setting
         });
+
 
 
         // Set socket immediately
