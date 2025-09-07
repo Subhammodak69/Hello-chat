@@ -18,7 +18,7 @@ export const ChatProvider = ({ children }) => {
         if (!socket) return;
 
         const handleNewMessage = (newMessage) => {
-            console.log("Received new message:", newMessage);
+            // console.log("Received new message:", newMessage);
 
             // Check if message is for current conversation
             const isCurrentConversation = selectedUser && 

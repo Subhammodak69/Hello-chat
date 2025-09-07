@@ -18,7 +18,16 @@ const Sidebar = () => {
 
   const dropdownRef = useRef(null);
 
-  const filteredUsers = input ? users.filter((user) => user.fullName.toLowerCase().includes(input.toLowerCase())) : users;
+  const filteredUsers = input
+    ? // When searching: show all users matching the search term
+      users.filter((user) => user.fullName.toLowerCase().includes(input.toLowerCase()))
+    : // When not searching: show only users with message history, unseen messages, or currently selected
+      users.filter((user) => {
+        const hasUnseenMessages = unseenMessages?.[user._id] && unseenMessages[user._id] > 0;
+        const isCurrentlySelected = selectedUser === user._id;
+
+        return hasUnseenMessages || isCurrentlySelected;
+      });
 
 
   // Close dropdown if click is outside of dropdownRef element

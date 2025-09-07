@@ -25,10 +25,8 @@ const RightSidebar = ({ selectedUserData, isOnProfile, setIsOnProfile }) => {
 
 
   useEffect(() => {
-    console.log(JSON.stringify(messages));
     const newImages = messages.filter(msg => msg.image).map(msg => msg.image);
     setMessageImages(newImages);
-    console.log("setmessageimages=>", newImages);
   }, [messages]);
 
   const isMobile = useIsMobile();

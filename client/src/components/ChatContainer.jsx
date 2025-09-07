@@ -121,9 +121,9 @@ const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
     const senderId = msg.senderId?._id || msg.senderId;
     const currentUserId = authUser?._id;
 
-    console.log("Message sender ID:", senderId);
-    console.log("Current user ID:", currentUserId);
-    console.log("Is my message:", senderId === currentUserId);
+    // console.log("Message sender ID:", senderId);
+    // console.log("Current user ID:", currentUserId);
+    // console.log("Is my message:", senderId === currentUserId);
 
     return senderId === currentUserId;
   };
