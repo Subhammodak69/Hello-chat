@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useContext } from 'react'
 import avatar_icon from '../assets/avatar.avif';
 import arrow_icon from '../assets/left-arrow.png';
-import assets from '../assets/assets';
+import { ChatContext } from '../context/ChatContext';
+import { AuthContext } from '../context/AuthContext';
 
 // Custom hook: define outside main component
 function useIsMobile(breakpoint = 786) {
@@ -17,6 +18,19 @@ function useIsMobile(breakpoint = 786) {
 }
 
 const RightSidebar = ({ selectedUserData, isOnProfile, setIsOnProfile }) => {
+  const { messages } = useContext(ChatContext);
+  const {onlineUsers} = useContext(AuthContext);
+
+  const [messageImages, setMessageImages] = useState([])
+
+
+  useEffect(() => {
+    console.log(JSON.stringify(messages));
+    const newImages = messages.filter(msg => msg.image).map(msg => msg.image);
+    setMessageImages(newImages);
+    console.log("setmessageimages=>", newImages);
+  }, [messages]);
+
   const isMobile = useIsMobile();
 
   // When to show sidebar
@@ -38,13 +52,13 @@ const RightSidebar = ({ selectedUserData, isOnProfile, setIsOnProfile }) => {
       {/* User profile */}
       <div className="pt-10 flex flex-col items-center gap-2 text-xs font-light mx-auto">
         <img
-          src={selectedUserData? selectedUserData.profilePic : avatar_icon}
+          src={selectedUserData?.profilePic || avatar_icon}
           alt=""
           className="w-20 aspect-[1/1] rounded-full"
         />
         <h1 className="px-10 text-xl font-medium mx-auto flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-green-500" />
-          {selectedUserData?.fullName}
+          {onlineUsers.includes(selectedUserData._id) && <span className="w-2 h-2 rounded-full bg-green-500" />}
+          {selectedUserData?.fullName || unknown}
         </h1>
         <p className="px-10 mx-auto">{selectedUserData?.bio}</p>
       </div>
@@ -55,7 +69,7 @@ const RightSidebar = ({ selectedUserData, isOnProfile, setIsOnProfile }) => {
       {/* Media images grid */}
       <div className="px-5 text-xs overflow-y-scroll max-h-[60%]">
         <div className="mt-2 grid grid-cols-2 gap-4">
-          {assets.imagesDummyData.map(({ url }, index) => (
+          {messageImages.map((url, index) => (
             <div
               key={index}
               onClick={() => window.open(url)}
@@ -64,6 +78,7 @@ const RightSidebar = ({ selectedUserData, isOnProfile, setIsOnProfile }) => {
               <img src={url} alt="" className="h-full rounded-md" />
             </div>
           ))}
+
         </div>
       </div>
     </div>
