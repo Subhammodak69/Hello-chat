@@ -19,8 +19,8 @@ const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (input.trim() === "") return null;
-    await sendMessage({ text: input.trim() });
     setInput("");
+    await sendMessage({ text: input.trim() });
   }
 
   //Handle sending a image
