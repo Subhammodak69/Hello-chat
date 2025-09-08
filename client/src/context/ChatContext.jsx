@@ -136,9 +136,7 @@ export const ChatProvider = ({ children }) => {
         try {
             console.log("going to delete  backend");
             // Optionally, send delete request to API
-            data = await axios.delete(`/api/messages/${messageId}`); // Adjust endpoint as needed
-            console.log(data.success+"reason=>"+data.message);
-
+            await axios.delete(`/api/messages/${messageId}`); // Adjust endpoint as needed
             // Remove from local state
             setMessages(prev => prev.filter(msg => msg._id !== messageId));
             toast.success("Message deleted");
