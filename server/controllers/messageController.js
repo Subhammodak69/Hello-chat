@@ -160,22 +160,21 @@ export const getUserData = async (req, res) => {
     }
 };
 
-
-//DELETE /api/messages/:id
+// DELETE /api/messages/:id
 export const deleteMessage = async (req, res) => {
   try {
     const { id } = req.params;
-    const deleted = await Message.findByIdAndDelete(id);
-    if (deleted) {
-      res.status(200).json({ success: true, message: "Message deleted" });
-    } else {
-      res.status(404).json({ success: false, message: "Message not found" });
-    }
+    // Fetch before delete
+    const msg = await Message.findById(id);
+    if (!msg) return res.status(404).json({ success: false });
+    // Delete
+    await Message.findByIdAndDelete(id);
+    // Room name
+    const room = [msg.senderId.toString(), msg.receiverId.toString()].sort().join("-");
+    // Emit to room
+    io.to(room).emit("messageDeleted", { messageId: id });
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
-
-
-

@@ -17,17 +17,14 @@ export const ChatProvider = ({ children }) => {
     useEffect(() => {
         if (!socket) return;
 
+        // Handle new incoming messages
         const handleNewMessage = (newMessage) => {
-            // console.log("Received new message:", newMessage);
-
-            // Check if message is for current conversation
             const isCurrentConversation = selectedUser &&
                 (newMessage.senderId === selectedUser ||
                     newMessage.receiverId === selectedUser ||
                     newMessage.senderId === authUser?._id);
 
             if (isCurrentConversation) {
-                // Add message to current conversation
                 const messageWithSender = {
                     ...newMessage,
                     sender_name: newMessage.senderData?.fullName || "Unknown",
@@ -35,18 +32,14 @@ export const ChatProvider = ({ children }) => {
                 };
 
                 setMessages(prev => {
-                    // Avoid duplicate messages
-                    const messageExists = prev.some(msg => msg._id === newMessage._id);
-                    if (messageExists) return prev;
-                    return [...prev, messageWithSender];
+                    const exists = prev.some(msg => msg._id === newMessage._id);
+                    return exists ? prev : [...prev, messageWithSender];
                 });
 
-                // Mark as seen if message is from selected user and user is not sender
                 if (newMessage.senderId === selectedUser && newMessage.senderId !== authUser?._id) {
                     axios.put(`/api/messages/mark/${newMessage._id}`).catch(console.error);
                 }
             } else if (newMessage.senderId !== authUser?._id) {
-                // Update unseen messages count for other conversations
                 setUnseenMessages(prev => ({
                     ...prev,
                     [newMessage.senderId]: (prev[newMessage.senderId] || 0) + 1
@@ -54,13 +47,23 @@ export const ChatProvider = ({ children }) => {
             }
         };
 
+        // Handle message deletion in real-time
+        const onDeleted = ({ messageId }) => {
+            setMessages(prev => prev.filter(m => m._id !== messageId));
+        };
+        socket.on("messageDeleted", onDeleted);
+
+        // Register socket listeners
         socket.on("newMessage", handleNewMessage);
 
-        // Cleanup
+        // Cleanup on unmount or dependency change
         return () => {
             socket.off("newMessage", handleNewMessage);
+            socket.off("messageDeleted", onDeleted);
         };
     }, [socket, selectedUser, authUser, axios]);
+
+    
 
     // Function to get all users for sidebar
     const getUsers = async () => {
@@ -134,16 +137,16 @@ export const ChatProvider = ({ children }) => {
     // Delete a message by its _id
     const deleteMessage = async (messageId) => {
         try {
-            console.log("going to delete  backend");
-            // Optionally, send delete request to API
-            await axios.delete(`/api/messages/${messageId}`); // Adjust endpoint as needed
-            // Remove from local state
-            setMessages(prev => prev.filter(msg => msg._id !== messageId));
+            console.log("going to delete backend");
+            await axios.delete(`/api/messages/${messageId}`);
+            -   // Remove from local state locally, let socket handle it
+                -   setMessages(prev => prev.filter(msg => msg._id !== messageId));
             toast.success("Message deleted");
         } catch (error) {
             toast.error(error.response?.data?.message || error.message);
         }
     };
+
 
 
     const value = {
