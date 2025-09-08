@@ -3,6 +3,7 @@ import User from "../models/User.js";
 import cloudinary from "../lib/cloudinary.js";
 import { io, userSocketMap } from "../server.js";
 
+
 // Send message to selected user
 export const sendMessage = async (req, res) => {
     try {
@@ -158,3 +159,23 @@ export const getUserData = async (req, res) => {
         res.status(500).json({ success: false, message: "Server error" });
     }
 };
+
+
+//DELETE /api/messages/:id
+export const deleteMessage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deleted = await Message.findByIdAndDelete(id);
+    if (deleted) {
+      res.status(200).json({ success: true, message: "Message deleted" });
+    } else {
+      res.status(404).json({ success: false, message: "Message not found" });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
+
+

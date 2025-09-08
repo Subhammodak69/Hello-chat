@@ -15,7 +15,7 @@ import threeDot from '../assets/threedot.png'
 
 
 const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
-  const { messages, selectedUser, setSelectedUser, sendMessage, getMessages, selectedUserData, setSelectedUserData, fetchUserData } = useContext(ChatContext);
+  const { messages, selectedUser, setSelectedUser, sendMessage, getMessages, selectedUserData, setSelectedUserData, fetchUserData,deleteMessage } = useContext(ChatContext);
   const { authUser, onlineUsers } = useContext(AuthContext);
   const [input, setInput] = useState('');
   const scrollEnd = useRef();
@@ -88,7 +88,9 @@ const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
     }
   }, [selectedUser]);
 
-    // Close delete popup on outside click
+  const messageRef = useRef(null);
+
+  // Close delete popup on outside click
   useEffect(() => {
     function handleClickOutside(event) {
       if (clicked && messageRef.current && !messageRef.current.contains(event.target)) {
@@ -113,6 +115,7 @@ const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
 
     return isMobile;
   }
+  
 
 
   // Helper function to check if message is from current user
@@ -177,9 +180,9 @@ const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
                   {clicked === (msg._id || index) && (
                     <div className='bg-stone-800 p-[2px_10px] text-white rounded cursor-pointer'>
                       <button className='cursor-pointer' onClick={() => {
-                        onDelete(msg._id || index)
+                        deleteMessage(msg._id)
                         setClicked(null)
-                        }}>Delete</button>
+                      }}>Delete</button>
                     </div>
                   )}
                   {(hovered === (msg._id || index)) && (
@@ -187,7 +190,7 @@ const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
                       src={threeDot}
                       alt=''
                       className='w-4 h-4'
-                      onMouseEnter={() =>setClicked(clicked === (msg._id || index) ? null : (msg._id || index)) }
+                      onMouseEnter={() => setClicked(clicked === (msg._id || index) ? null : (msg._id || index))}
                       onClick={(e) => {
                         e.stopPropagation(); // Prevent bubbling if needed
                         setClicked(clicked === (msg._id || index) ? null : (msg._id || index));

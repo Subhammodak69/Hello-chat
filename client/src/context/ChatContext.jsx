@@ -21,10 +21,10 @@ export const ChatProvider = ({ children }) => {
             // console.log("Received new message:", newMessage);
 
             // Check if message is for current conversation
-            const isCurrentConversation = selectedUser && 
-                (newMessage.senderId === selectedUser || 
-                 newMessage.receiverId === selectedUser ||
-                 newMessage.senderId === authUser?._id);
+            const isCurrentConversation = selectedUser &&
+                (newMessage.senderId === selectedUser ||
+                    newMessage.receiverId === selectedUser ||
+                    newMessage.senderId === authUser?._id);
 
             if (isCurrentConversation) {
                 // Add message to current conversation
@@ -33,7 +33,7 @@ export const ChatProvider = ({ children }) => {
                     sender_name: newMessage.senderData?.fullName || "Unknown",
                     sender_pic: newMessage.senderData?.profilePic || null
                 };
-                
+
                 setMessages(prev => {
                     // Avoid duplicate messages
                     const messageExists = prev.some(msg => msg._id === newMessage._id);
@@ -99,7 +99,7 @@ export const ChatProvider = ({ children }) => {
                     sender_pic: msg.senderData?.profilePic || null
                 }));
                 setMessages(messagesWithSenderInfo);
-                
+
                 // Clear unseen count for this user
                 setUnseenMessages(prev => {
                     const updated = { ...prev };
@@ -128,6 +128,26 @@ export const ChatProvider = ({ children }) => {
         }
     };
 
+
+
+
+    // Delete a message by its _id
+    const deleteMessage = async (messageId) => {
+        try {
+            console.log("going to delete  backend");
+            // Optionally, send delete request to API
+            data = await axios.delete(`/api/messages/${messageId}`); // Adjust endpoint as needed
+            console.log(data.success+"reason=>"+data.message);
+
+            // Remove from local state
+            setMessages(prev => prev.filter(msg => msg._id !== messageId));
+            toast.success("Message deleted");
+        } catch (error) {
+            toast.error(error.response?.data?.message || error.message);
+        }
+    };
+
+
     const value = {
         messages,
         users,
@@ -141,7 +161,8 @@ export const ChatProvider = ({ children }) => {
         sendMessage,
         setSelectedUser,
         unseenMessages,
-        setUnseenMessages
+        setUnseenMessages,
+        deleteMessage
     };
 
     return (
