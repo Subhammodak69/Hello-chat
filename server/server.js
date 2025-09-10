@@ -7,18 +7,21 @@ import userRouter from "./routes/userRoutes.js"
 import messageRouter from "./routes/messageRoutes.js";
 import { Server } from "socket.io";
 
-// Create Express app and HTTP server
 const app = express();
 const server = http.createServer(app);
 
-// Initialize socket.io server
+// ✅ FIXED: Remove trailing slash and add multiple origins
 export const io = new Server(server, {
     cors: { 
-        origin: "https://hello-chat-five.vercel.app/",
-        methods: ["GET", "POST"],
+        origin: [
+            "https://hello-chat-five.vercel.app",  // ✅ No trailing slash
+            "http://localhost:3000",               // For local development
+            "http://localhost:5173"                // For Vite dev server
+        ],
+        methods: ["GET", "POST", "PUT", "DELETE"],
         credentials: true
     },
-    transports: ["websocket", "polling"], // Allow both for better compatibility
+    transports: ["websocket", "polling"],
 });
 
 // ✅ Middleware to extract userId from auth
@@ -81,32 +84,27 @@ io.on("connection", (socket) => {
             io.emit("getOnlineUsers", Object.keys(userSocketMap));
         }
     });
-
-    // Handle typing indicators (optional enhancement)
-    socket.on("typing", (data) => {
-        const room = data.room;
-        socket.to(room).emit("userTyping", {
-            userId: userId,
-            isTyping: data.isTyping
-        });
-    });
-
-    // Handle message read receipts (optional enhancement)
-    socket.on("messageRead", (data) => {
-        const room = data.room;
-        socket.to(room).emit("messageReadReceipt", {
-            messageId: data.messageId,
-            readBy: userId
-        });
-    });
 });
 
-// Middleware setup
+// ✅ FIXED: Updated CORS middleware
 app.use(express.json({ limit: "4mb" }));
 app.use(cors({
-    origin: "https://hello-chat-five.vercel.app/",
-    credentials: true
+    origin: [
+        "https://hello-chat-five.vercel.app",  // ✅ No trailing slash
+        "http://localhost:3000",               // For local development
+        "http://localhost:5173"                // For Vite dev server
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+    optionsSuccessStatus: 200 // Some legacy browsers (IE11, various SmartTVs) choke on 204
 }));
+
+// Add request logging middleware
+app.use((req, res, next) => {
+    console.log(`${req.method} ${req.originalUrl}`, req.headers.authorization ? 'WITH AUTH' : 'NO AUTH');
+    console.log('Origin:', req.headers.origin);
+    next();
+});
 
 // Route setup
 app.use("/api/status", (req, res) => {
@@ -130,8 +128,9 @@ app.use((err, req, res, next) => {
     });
 });
 
-// Handle 404 routes - FIXED: Remove the "*" pattern
+// Handle 404 routes
 app.use((req, res) => {
+    console.log(`404 - Route not found: ${req.method} ${req.originalUrl}`);
     res.status(404).json({ 
         success: false, 
         message: "Route not found",
@@ -153,7 +152,7 @@ const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server is running on PORT: ${PORT}`);
-    console.log(`🌐 Frontend URL: https://hello-chat-five.vercel.app/`);
+    console.log(`🌐 Frontend URL: https://hello-chat-five.vercel.app`);
     console.log(`📡 Socket.io server is ready`);
 });
 
