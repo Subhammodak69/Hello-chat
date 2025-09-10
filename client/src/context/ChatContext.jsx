@@ -88,10 +88,20 @@ export const ChatProvider = ({ children }) => {
         socket.on("newMessage", handleNewMessage);
         socket.on("messageDeleted", handleMessageDeleted);
 
+        // Listen for sidebar updates
+        const handleSidebarUpdate = (sidebarData) => {
+            if (sidebarData.users) setUsers(sidebarData.users);
+            if (sidebarData.unseenMessages) setUnseenMessages(sidebarData.unseenMessages);
+            if (sidebarData.chatMembers) setChatMembers(sidebarData.chatMembers);
+        }
+
+        socket.on("updateSidebar", handleSidebarUpdate);
+
         // Cleanup on unmount or dependency change
         return () => {
             socket.off("newMessage", handleNewMessage);
             socket.off("messageDeleted", handleMessageDeleted);
+            socket.off("updateSidebar", handleSidebarUpdate);
         };
     }, [socket, selectedUser, authUser, axios]);
 
