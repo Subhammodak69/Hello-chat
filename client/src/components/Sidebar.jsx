@@ -3,6 +3,9 @@ import { ChatContext } from "../context/ChatContext";
 import { AuthContext } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import avatar_icon from "../assets/avatar.avif";
+import logoImg from "../assets/message.png";
+import userIcon from "../assets/user.png";
+import logoutIcon from "../assets/turn-off.png";
 import LoaderSpinner from "../components/LoaderSpinner";
 
 
@@ -69,7 +72,7 @@ const Sidebar = () => {
             <div className={`bg-[#000ea6]/10 h-full p-5 overflow-y-scroll text-white ${selectedUser ? "max-md:hidden" : ""}`}>
                 <div className="pb-5 flex justify-between items-start">
                     <div className="flex items-center">
-                        <img src={require("../assets/message.png")} alt="logo" className="rounded-full ml-[5px] mt-[5px] max-w-10" />
+                        <img src={logoImg} alt="logo" className="rounded-full ml-[5px] mt-[5px] max-w-10" />
                         <h1 className="m-auto text-lg text-black font-bold">Hello Chats</h1>
                     </div>
                     <div className="relative group mr-[10px]" ref={dropdownRef}>
@@ -88,12 +91,12 @@ const Sidebar = () => {
                             className={`absolute top-full right-0 z-20 w-32 p-5 rounded-md bg-[#3579ff3b] border border-grey-600 text-grey-100 cursor-pointer ${isOpen ? "block" : "hidden"} group-hover:block`}
                         >
                             <p onClick={() => navigate("/profile")} className="cursor-pointer flex gap-[5px] text-sm">
-                                <img src={require("../assets/user.png")} alt="profile" className="max-w-5 bg-white rounded-full" />
+                                <img src={userIcon} alt="profile" className="max-w-5 bg-white rounded-full" />
                                 Profile
                             </p>
                             <hr className="my-2 border-t border-grey-500" />
                             <p onClick={handleLogout} className="cursor-pointer flex gap-[5px] text-sm">
-                                <img src={require("../assets/turn-off.png")} alt="logout" className="max-w-5 bg-white rounded-full" />
+                                <img src={logoutIcon} alt="logout" className="max-w-5 bg-white rounded-full" />
                                 Logout
                             </p>
                         </div>
