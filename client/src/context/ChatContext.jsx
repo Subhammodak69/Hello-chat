@@ -10,6 +10,7 @@ export const ChatProvider = ({ children }) => {
     const [selectedUser, setSelectedUser] = useState(null);
     const [selectedUserData, setSelectedUserData] = useState(null);
     const [unseenMessages, setUnseenMessages] = useState({});
+    const [chatMembers, setChatMembers] = useState([]);
 
     const { socket, axios, authUser } = useContext(AuthContext);
 
@@ -69,9 +70,11 @@ export const ChatProvider = ({ children }) => {
     const getUsers = async () => {
         try {
             const { data } = await axios.get("/api/messages/users");
+            console.log(JSON.stringify(data));
             if (data.success) {
                 setUsers(data.users);
                 setUnseenMessages(data.unseenMessages);
+                setChatMembers(data.chatMembers);
             }
         } catch (error) {
             toast.error(error.response?.data?.message || error.message);
@@ -163,7 +166,8 @@ export const ChatProvider = ({ children }) => {
         setSelectedUser,
         unseenMessages,
         setUnseenMessages,
-        deleteMessage
+        deleteMessage,
+        chatMembers,
     };
 
     return (

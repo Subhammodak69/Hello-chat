@@ -10,7 +10,7 @@ import { ChatContext } from '../context/ChatContext';
 
 
 const Sidebar = () => {
-  const { getUsers, users, selectedUser, setSelectedUser, unseenMessages,selectedUserData } = useContext(ChatContext);
+  const { getUsers, users, selectedUser, setSelectedUser, unseenMessages,selectedUserData ,chatMembers} = useContext(ChatContext);
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -26,7 +26,7 @@ const Sidebar = () => {
         const hasUnseenMessages = unseenMessages?.[user._id] && unseenMessages[user._id] > 0;
         const isCurrentlySelected = selectedUser === user._id;
 
-        return hasUnseenMessages || isCurrentlySelected;
+        return hasUnseenMessages || isCurrentlySelected || chatMembers;
       });
 
 

@@ -56,10 +56,10 @@ export const sendMessage = async (req, res) => {
         // Optional: Broadcast to all connected clients (remove if you want private messaging only)
         // io.emit("newMessage", messageForSocket);
 
-        res.json({ 
-            success: true, 
-            newMessage: newMessage, 
-            senderData: senderData 
+        res.json({
+            success: true,
+            newMessage: newMessage,
+            senderData: senderData
         });
 
     } catch (error) {
@@ -84,26 +84,26 @@ export const getMessages = async (req, res) => {
     try {
         const { id: selectedUserId } = req.params;
         const myId = req.user._id;
-        
+
         const messages = await Message.find({
             $or: [
                 { senderId: myId, receiverId: selectedUserId },
                 { senderId: selectedUserId, receiverId: myId },
             ]
         }).populate('senderId', 'fullName profilePic').sort({ createdAt: 1 });
-        
+
         // Mark messages as seen
         await Message.updateMany(
-            { senderId: selectedUserId, receiverId: myId }, 
+            { senderId: selectedUserId, receiverId: myId },
             { seen: true }
         );
-        
+
         // Format messages with sender data
         const formattedMessages = messages.map(msg => ({
             ...msg.toObject(),
             senderData: msg.senderId
         }));
-        
+
         res.json({ success: true, messages: formattedMessages });
     } catch (error) {
         res.json({ success: false, message: error.message });
@@ -133,12 +133,60 @@ export const getUsersForSidebar = async (req, res) => {
             }
         ]);
 
+        const chatMembers = await Message.aggregate([
+            {
+                $match: {
+                    $or: [
+                        { senderId: userId },
+                        { receiverId: userId }
+                    ]
+                }
+            },
+            {
+                $project: {
+                    userId1: "$senderId",
+                    userId2: "$receiverId",
+                }
+            },
+            {
+                $project: {
+                    otherUserId: {
+                        $cond: [
+                            { $eq: ["$userId1", userId] },
+                            "$userId2",
+                            "$userId1"
+                        ]
+                    }
+                }
+            },
+            {
+                $group: {
+                    _id: "$otherUserId"
+                }
+            },
+            {
+                // Optionally, join with the Users collection to fetch user details
+                $lookup: {
+                    from: "users",           // Assuming your user collection name is "users"
+                    localField: "_id",
+                    foreignField: "_id",
+                    as: "userDetails"
+                }
+            },
+            {
+                $unwind: "$userDetails"
+            },
+            {
+                $replaceRoot: { newRoot: "$userDetails" }
+            }
+        ]);
+        console.log("chatMembers=>"+chatMembers);
         const unseenMessagesMap = {};
         unseenMessages.forEach(item => {
             unseenMessagesMap[item._id.toString()] = item.count;
         });
 
-        res.json({ success: true, users: allOtherUsers, unseenMessages: unseenMessagesMap });
+        res.json({ success: true, users: allOtherUsers, unseenMessages: unseenMessagesMap, chatMembers: chatMembers });
     } catch (error) {
         res.json({ success: false, message: error.message });
     }
@@ -162,19 +210,19 @@ export const getUserData = async (req, res) => {
 
 // DELETE /api/messages/:id
 export const deleteMessage = async (req, res) => {
-  try {
-    const { id } = req.params;
-    // Fetch before delete
-    const msg = await Message.findById(id);
-    if (!msg) return res.status(404).json({ success: false });
-    // Delete
-    await Message.findByIdAndDelete(id);
-    // Room name
-    const room = [msg.senderId.toString(), msg.receiverId.toString()].sort().join("-");
-    // Emit to room
-    io.to(room).emit("messageDeleted", { messageId: id });
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+    try {
+        const { id } = req.params;
+        // Fetch before delete
+        const msg = await Message.findById(id);
+        if (!msg) return res.status(404).json({ success: false });
+        // Delete
+        await Message.findByIdAndDelete(id);
+        // Room name
+        const room = [msg.senderId.toString(), msg.receiverId.toString()].sort().join("-");
+        // Emit to room
+        io.to(room).emit("messageDeleted", { messageId: id });
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
 };
