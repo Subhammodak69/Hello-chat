@@ -23,11 +23,14 @@ const Sidebar = () => {
       users.filter((user) => user.fullName.toLowerCase().includes(input.toLowerCase()))
     : // When not searching: show only users with message history, unseen messages, or currently selected
       users.filter((user) => {
-        const hasUnseenMessages = unseenMessages?.[user._id] && unseenMessages[user._id] > 0;
-        const isCurrentlySelected = selectedUser === user._id;
+      const hasUnseenMessages = unseenMessages?.[user._id] && unseenMessages[user._id] > 0;
+      const isCurrentlySelected = selectedUser === user._id;
+      const isInChatMembers = chatMembers.some(member => member._id === user._id) || chatMembers.includes(user._id);
+      // Use .some() if chatMembers is an array of user objects, or .includes() if it is an array of user ids.
 
-        return hasUnseenMessages || isCurrentlySelected || chatMembers;
-      });
+      return hasUnseenMessages || isCurrentlySelected || isInChatMembers;
+    });
+
 
 
   // Close dropdown if click is outside of dropdownRef element
