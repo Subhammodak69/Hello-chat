@@ -13,14 +13,34 @@ import emojiIcon from '../assets/emoji.png'
 import EmojiPicker from 'emoji-picker-react'
 import threeDot from '../assets/threedot.png'
 
-
 const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
-  const { messages, selectedUser, setSelectedUser, sendMessage, getMessages, selectedUserData, setSelectedUserData, fetchUserData,deleteMessage } = useContext(ChatContext);
+  const { messages, selectedUser, setSelectedUser, sendMessage, getMessages, selectedUserData, setSelectedUserData, fetchUserData, deleteMessage } = useContext(ChatContext);
   const { authUser, onlineUsers } = useContext(AuthContext);
   const [input, setInput] = useState('');
+  const [showPicker, setShowPicker] = useState(false);
+  const [hovered, setHovered] = useState(null);
+  const [clicked, setClicked] = useState(null);
+  
+  // Refs
   const scrollEnd = useRef();
-  const [hovered, setHovered] = useState(false);
-  const [clicked, setClicked] = useState(false);
+  const pickerRef = useRef();
+  const inputRef = useRef(); // Added missing inputRef
+  const messageRef = useRef(null);
+
+  // Custom hook for mobile detection
+  function useIsMobile(breakpoint = 786) {
+    const [isMobile, setIsMobile] = useState(window.innerWidth < breakpoint);
+
+    useEffect(() => {
+      const handleResize = () => setIsMobile(window.innerWidth < breakpoint);
+      window.addEventListener("resize", handleResize);
+      return () => window.removeEventListener("resize", handleResize);
+    }, [breakpoint]);
+
+    return isMobile;
+  }
+
+  const isMobile = useIsMobile();
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -29,15 +49,13 @@ const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
     await sendMessage({ text: input.trim() });
   }
 
-  const [showPicker, setShowPicker] = useState(false)
-  const pickerRef = useRef()
-
   const onEmojiClick = (emojiData) => {
     setInput((prev) => prev + emojiData.emoji)
     setShowPicker(false)
-    inputRef.current?.focus()   // Focus input to continue typing or press Enter
+    inputRef.current?.focus() // Now properly references the input
   }
 
+  // Handle clicking outside emoji picker
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (pickerRef.current && !pickerRef.current.contains(e.target)) {
@@ -48,13 +66,22 @@ const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Close delete popup on outside click
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (clicked && messageRef.current && !messageRef.current.contains(event.target)) {
+        setClicked(null);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [clicked]);
 
-
-  //Handle sending a image
+  // Handle sending an image
   const handleSendImage = async (e) => {
     const file = e.target.files[0];
     if (!file || !file.type.startsWith("image/")) {
-      toast.error("select a image file...")
+      toast.error("Please select an image file...")
       return;
     }
     const reader = new FileReader();
@@ -65,14 +92,15 @@ const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
     reader.readAsDataURL(file)
   }
 
+  // Fetch messages and user data when selectedUser changes
   useEffect(() => {
     if (selectedUser) {
       getMessages(selectedUser);
       fetchUserData(selectedUser);
     } else {
-      setSelectedUserData(null); // clear when no user selected
+      setSelectedUserData(null);
     }
-  }, [selectedUser]);
+  }, [selectedUser, getMessages, fetchUserData, setSelectedUserData]);
 
   // Auto scroll to bottom when new messages arrive
   useEffect(() => {
@@ -88,47 +116,17 @@ const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
     }
   }, [selectedUser]);
 
-  const messageRef = useRef(null);
-
-  // Close delete popup on outside click
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (clicked && messageRef.current && !messageRef.current.contains(event.target)) {
-        setClicked(null);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [clicked, setClicked]);
-
-
-  const isMobile = useIsMobile(); // Call your custom hook here
-
-  function useIsMobile(breakpoint = 786) {
-    const [isMobile, setIsMobile] = useState(window.innerWidth < breakpoint);
-
-    useEffect(() => {
-      const handleResize = () => setIsMobile(window.innerWidth < breakpoint);
-      window.addEventListener("resize", handleResize);
-      return () => window.removeEventListener("resize", handleResize);
-    }, [breakpoint]);
-
-    return isMobile;
-  }
-  
-
-
   // Helper function to check if message is from current user
   const isMyMessage = (msg) => {
-    // Handle different possible message structures
     const senderId = msg.senderId?._id || msg.senderId;
     const currentUserId = authUser?._id;
-
-    // console.log("Message sender ID:", senderId);
-    // console.log("Current user ID:", currentUserId);
-    // console.log("Is my message:", senderId === currentUserId);
-
     return senderId === currentUserId;
+  };
+
+  // Handle message deletion
+  const handleDeleteMessage = (messageId) => {
+    deleteMessage(messageId);
+    setClicked(null);
   };
 
   if (!selectedUser) {
@@ -141,26 +139,41 @@ const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
   }
 
   return (
-    <div className='h-full overflow-scroll relative backdrop-blur-lg '>
+    <div className='h-full overflow-scroll relative backdrop-blur-lg'>
       {/* Header */}
       <div className='flex items-center justify-between gap-3 py-3 mx-4 border-b border-stone-500'>
         <div className="flex items-center gap-2"
           onClick={() => {
             if (isMobile) {
-              console.log("is triggered");
+              console.log("Profile view triggered");
               setIsOnProfile(true);
             }
           }}
         >
-          <img src={selectedUserData?.profilePic || avatar} alt='User Avatar' className='w-10 h-10 rounded-full object-cover' />
-          <h1 className='m-auto text-lg text-black font-bold'>{selectedUserData?.fullName || "Loading..."}</h1>
+          <img 
+            src={selectedUserData?.profilePic || avatar} 
+            alt='User Avatar' 
+            className='w-10 h-10 rounded-full object-cover' 
+          />
+          <h1 className='m-auto text-lg text-black font-bold'>
+            {selectedUserData?.fullName || "Loading..."}
+          </h1>
           {selectedUserData && onlineUsers.includes(selectedUserData._id) && (
             <span className='w-2 h-2 rounded-full bg-green-700'></span>
           )}
         </div>
         <div>
-          <img onClick={() => setSelectedUser(null)} src={arrow_icon} alt='' className='md:hidden max-w-7 cursor-pointer' />
-          <img src={help} alt="" className='max-md:hidden max-w-5' />
+          <img 
+            onClick={() => setSelectedUser(null)} 
+            src={arrow_icon} 
+            alt='Back' 
+            className='md:hidden max-w-7 cursor-pointer' 
+          />
+          <img 
+            src={help} 
+            alt="Help" 
+            className='max-md:hidden max-w-5' 
+          />
         </div>
       </div>
 
@@ -168,40 +181,48 @@ const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
       <div className='flex flex-col h-[calc(100%-120px)] overflow-y-scroll p-3 pb-6'>
         {messages.map((msg, index) => {
           const isCurrentUserMessage = isMyMessage(msg);
+          const messageId = msg._id || index;
 
           return isCurrentUserMessage ? (
             // My messages: right-aligned, violet bubble
             <div
-              key={msg._id || index}
+              key={messageId}
               className="flex justify-end items-end mb-2"
             >
-              <div className="flex flex-col items-end cursor-pointer" onClick={() => setHovered(msg._id || index)} onMouseEnter={() => setHovered(msg._id || index)} onMouseLeave={() => setHovered(null)}>
+              <div 
+                className="flex flex-col items-end cursor-pointer" 
+                onMouseEnter={() => setHovered(messageId)} 
+                onMouseLeave={() => setHovered(null)}
+                ref={clicked === messageId ? messageRef : null}
+              >
                 <div className='flex items-center'>
-                  {clicked === (msg._id || index) && (
-                    <div className='bg-stone-800 p-[2px_10px] text-white rounded cursor-pointer'>
-                      <button className='cursor-pointer' onClick={() => {
-                        deleteMessage(msg._id)
-                        setClicked(null)
-                      }}>Delete</button>
+                  {clicked === messageId && (
+                    <div className='bg-stone-800 p-[2px_10px] text-white rounded cursor-pointer mr-2'>
+                      <button 
+                        className='cursor-pointer text-sm' 
+                        onClick={() => handleDeleteMessage(msg._id)}
+                      >
+                        Delete
+                      </button>
                     </div>
                   )}
-                  {(hovered === (msg._id || index)) && (
+                  {hovered === messageId && (
                     <img
                       src={threeDot}
-                      alt=''
-                      className='w-4 h-4'
-                      onMouseEnter={() => setClicked(clicked === (msg._id || index) ? null : (msg._id || index))}
+                      alt='Options'
+                      className='w-4 h-4 cursor-pointer mr-2'
                       onClick={(e) => {
-                        e.stopPropagation(); // Prevent bubbling if needed
-                        setClicked(clicked === (msg._id || index) ? null : (msg._id || index));
+                        e.stopPropagation();
+                        setClicked(clicked === messageId ? null : messageId);
                       }}
                     />
                   )}
 
                   {msg.image ? (
-                    <img onClick={() => window.open(msg.image)}
+                    <img 
+                      onClick={() => window.open(msg.image)}
                       src={msg.image}
-                      alt=""
+                      alt="Shared image"
                       className="max-w-[150px] border border-gray-700 rounded-lg overflow-hidden mb-2 cursor-pointer"
                     />
                   ) : (
@@ -210,26 +231,28 @@ const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
                     </p>
                   )}
                 </div>
-                <span className="text-xs text-white-500">{formatMessageTime(msg.createdAt)}</span>
+                <span className="text-xs text-gray-400">
+                  {formatMessageTime(msg.createdAt)}
+                </span>
               </div>
             </div>
           ) : (
             // Other user messages: left-aligned, gray bubble with avatar
             <div
-              key={msg._id || index}
+              key={messageId}
               className="flex justify-start items-start mb-2"
             >
               <img
                 src={msg.sender_pic || msg.senderData?.profilePic || avatar}
-                alt=""
+                alt="Sender avatar"
                 className="w-[20px] h-[20px] rounded-full mr-2"
               />
               <div className="flex flex-col items-start">
-
                 {msg.image ? (
-                  <img onClick={() => window.open(msg.image)}
+                  <img 
+                    onClick={() => window.open(msg.image)}
                     src={msg.image}
-                    alt=""
+                    alt="Shared image"
                     className="max-w-[150px] border border-gray-700 rounded-lg overflow-hidden mb-2 cursor-pointer"
                   />
                 ) : (
@@ -237,7 +260,9 @@ const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
                     {msg.text}
                   </p>
                 )}
-                <span className="text-xs text-white-500">{formatMessageTime(msg.createdAt)}</span>
+                <span className="text-xs text-gray-400">
+                  {formatMessageTime(msg.createdAt)}
+                </span>
               </div>
             </div>
           );
@@ -245,32 +270,45 @@ const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
         <div ref={scrollEnd}></div>
       </div>
 
-      {/*------------bottom area start------- */}
+      {/* Bottom Input Area */}
       <div className='absolute bottom-0 left-0 right-0 flex items-center gap-3 p-3'>
         <div className='flex-1 flex items-center bg-gray-100/12 px-3 rounded-full'>
-
-
-          <button onClick={() => setShowPicker((v) => !v)} aria-label="Emoji picker">
+          {/* Emoji Picker Button */}
+          <button 
+            onClick={() => setShowPicker((v) => !v)} 
+            aria-label="Emoji picker"
+            className="mr-2"
+          >
             <img src={emojiIcon} alt="😊" className="w-6 h-6 cursor-pointer" />
           </button>
 
+          {/* Emoji Picker */}
           {showPicker && (
             <div
               ref={pickerRef}
-              style={{ position: 'absolute', bottom: '50px', left: '10px', zIndex: 1000 }}
+              style={{ 
+                position: 'absolute', 
+                bottom: '60px', 
+                left: '10px', 
+                zIndex: 1000 
+              }}
             >
               <EmojiPicker onEmojiClick={onEmojiClick} />
             </div>
           )}
 
+          {/* Text Input */}
           <input
+            ref={inputRef} // Now properly referenced
             onChange={(e) => setInput(e.target.value)}
             value={input}
             onKeyDown={(e) => e.key === "Enter" ? handleSendMessage(e) : null}
             type='text'
             placeholder='Send a message'
-            className='flex-1 text-sm p-3 border-none rounded-lg outline-none text-white placeholder-gray-800 bg-transparent'
+            className='flex-1 text-sm p-3 border-none rounded-lg outline-none text-white placeholder-gray-400 bg-transparent'
           />
+
+          {/* Image Upload */}
           <input
             onChange={handleSendImage}
             type='file'
@@ -279,14 +317,22 @@ const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
             hidden
           />
           <label htmlFor="image">
-            <img src={galary} alt='' className='w-5 mr-2 cursor-pointer' />
+            <img src={galary} alt='Upload image' className='w-5 mr-2 cursor-pointer' />
           </label>
         </div>
-        {input ? (<img onClick={handleSendMessage} src={sendbtn} alt='' className='w-5 cursor-pointer' />) : ''}
+
+        {/* Send Button */}
+        {input && (
+          <img 
+            onClick={handleSendMessage} 
+            src={sendbtn} 
+            alt='Send' 
+            className='w-5 cursor-pointer' 
+          />
+        )}
       </div>
-      {/*------------bottom area end------- */}
     </div>
   );
 };
 
-export default ChatContainer
+export default ChatContainer;

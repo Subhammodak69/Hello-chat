@@ -3,8 +3,54 @@ import User from "../models/User.js";
 import cloudinary from "../lib/cloudinary.js";
 import { io, userSocketMap } from "../server.js";
 
+// DELETE /api/messages/:id
+export const deleteMessage = async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        // Fetch message before delete to get sender and receiver info
+        const msg = await Message.findById(id);
+        if (!msg) {
+            return res.status(404).json({ 
+                success: false, 
+                message: "Message not found" 
+            });
+        }
 
-// Send message to selected user
+        // Verify that the user deleting is the sender
+        if (msg.senderId.toString() !== req.user._id.toString()) {
+            return res.status(403).json({
+                success: false,
+                message: "You can only delete your own messages"
+            });
+        }
+
+        // Delete the message
+        await Message.findByIdAndDelete(id);
+
+        // Create room name with consistent string formatting
+        const room = [msg.senderId.toString(), msg.receiverId.toString()].sort().join("-");
+        
+        console.log(`Emitting messageDeleted to room: ${room}, messageId: ${id}`);
+        console.log(`Online users in room:`, Object.keys(userSocketMap));
+        
+        // Emit to room that message was deleted
+        io.to(room).emit("messageDeleted", { messageId: id });
+
+        res.json({ 
+            success: true, 
+            message: "Message deleted successfully" 
+        });
+    } catch (error) {
+        console.error("Error deleting message:", error);
+        res.status(500).json({ 
+            success: false, 
+            message: error.message 
+        });
+    }
+};
+
+// Send message to selected user (updated for consistency)
 export const sendMessage = async (req, res) => {
     try {
         const { text, image } = req.body;
@@ -39,22 +85,12 @@ export const sendMessage = async (req, res) => {
             senderData: senderData
         };
 
-        // Get socket IDs for both users
-        const receiverSocketId = userSocketMap[receiverId];
-        const senderSocketId = userSocketMap[senderId.toString()];
-
-        // Emit to receiver if online
-        if (receiverSocketId) {
-            io.to(receiverSocketId).emit("newMessage", messageForSocket);
-        }
-
-        // Emit to sender if online (for multiple tabs/devices)
-        if (senderSocketId) {
-            io.to(senderSocketId).emit("newMessage", messageForSocket);
-        }
-
-        // Optional: Broadcast to all connected clients (remove if you want private messaging only)
-        // io.emit("newMessage", messageForSocket);
+        // Create room name with consistent string formatting
+        const room = [senderId.toString(), receiverId.toString()].sort().join("-");
+        console.log(`Emitting newMessage to room: ${room}`);
+        
+        // Emit to room instead of individual sockets
+        io.to(room).emit("newMessage", messageForSocket);
 
         res.json({
             success: true,
@@ -68,10 +104,10 @@ export const sendMessage = async (req, res) => {
     }
 };
 
-// Fix the mark message as seen function
+// Keep your other functions the same...
 export const markMessageAsSeen = async (req, res) => {
     try {
-        const { id } = req.params; // Fixed from res.params
+        const { id } = req.params;
         await Message.findByIdAndUpdate(id, { seen: true });
         res.json({ success: true });
     } catch (error) {
@@ -79,7 +115,6 @@ export const markMessageAsSeen = async (req, res) => {
     }
 };
 
-// Update getMessages to include sender data
 export const getMessages = async (req, res) => {
     try {
         const { id: selectedUserId } = req.params;
@@ -110,7 +145,6 @@ export const getMessages = async (req, res) => {
     }
 };
 
-// Keep other functions the same...
 export const getUsersForSidebar = async (req, res) => {
     try {
         const userId = req.user._id;
@@ -165,9 +199,8 @@ export const getUsersForSidebar = async (req, res) => {
                 }
             },
             {
-                // Optionally, join with the Users collection to fetch user details
                 $lookup: {
-                    from: "users",           // Assuming your user collection name is "users"
+                    from: "users",
                     localField: "_id",
                     foreignField: "_id",
                     as: "userDetails"
@@ -180,7 +213,7 @@ export const getUsersForSidebar = async (req, res) => {
                 $replaceRoot: { newRoot: "$userDetails" }
             }
         ]);
-        console.log("chatMembers=>"+chatMembers);
+
         const unseenMessagesMap = {};
         unseenMessages.forEach(item => {
             unseenMessagesMap[item._id.toString()] = item.count;
@@ -205,24 +238,5 @@ export const getUserData = async (req, res) => {
         res.json({ success: true, user: userObject });
     } catch (error) {
         res.status(500).json({ success: false, message: "Server error" });
-    }
-};
-
-// DELETE /api/messages/:id
-export const deleteMessage = async (req, res) => {
-    try {
-        const { id } = req.params;
-        // Fetch before delete
-        const msg = await Message.findById(id);
-        if (!msg) return res.status(404).json({ success: false });
-        // Delete
-        await Message.findByIdAndDelete(id);
-        // Room name
-        const room = [msg.senderId.toString(), msg.receiverId.toString()].sort().join("-");
-        // Emit to room
-        io.to(room).emit("messageDeleted", { messageId: id });
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
     }
 };
