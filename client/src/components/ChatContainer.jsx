@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useContext } from 'react'
+import React, { useEffect, useState, useRef, useContext, useCallback } from 'react'
 import arrow_icon from '../assets/left-arrow.png';
 import help from '../assets/question.png';
 import logoImg from '../assets/message.png';
@@ -14,8 +14,19 @@ import EmojiPicker from 'emoji-picker-react'
 import threeDot from '../assets/threedot.png'
 
 const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
-  const { messages, selectedUser, setSelectedUser, sendMessage, getMessages, selectedUserData, setSelectedUserData, fetchUserData, deleteMessage } = useContext(ChatContext);
+  const { 
+    messages, 
+    selectedUser, 
+    setSelectedUser, 
+    sendMessage, 
+    getMessages, 
+    selectedUserData, 
+    setSelectedUserData, 
+    fetchUserData, 
+    deleteMessage 
+  } = useContext(ChatContext);
   const { authUser, onlineUsers } = useContext(AuthContext);
+  
   const [input, setInput] = useState('');
   const [showPicker, setShowPicker] = useState(false);
   const [hovered, setHovered] = useState(null);
@@ -24,7 +35,7 @@ const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
   // Refs
   const scrollEnd = useRef();
   const pickerRef = useRef();
-  const inputRef = useRef(); // Added missing inputRef
+  const inputRef = useRef();
   const messageRef = useRef(null);
 
   // Custom hook for mobile detection
@@ -42,17 +53,31 @@ const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
 
   const isMobile = useIsMobile();
 
+  // Memoized callback functions to prevent infinite loops
+  const memoizedGetMessages = useCallback((userId) => {
+    if (userId) {
+      getMessages(userId);
+    }
+  }, [getMessages]);
+
+  const memoizedFetchUserData = useCallback((userId) => {
+    if (userId) {
+      fetchUserData(userId);
+    }
+  }, [fetchUserData]);
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (input.trim() === "") return null;
+    const messageText = input.trim();
     setInput("");
-    await sendMessage({ text: input.trim() });
+    await sendMessage({ text: messageText });
   }
 
   const onEmojiClick = (emojiData) => {
     setInput((prev) => prev + emojiData.emoji)
     setShowPicker(false)
-    inputRef.current?.focus() // Now properly references the input
+    inputRef.current?.focus()
   }
 
   // Handle clicking outside emoji picker
@@ -79,7 +104,7 @@ const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
 
   // Handle sending an image
   const handleSendImage = async (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files;
     if (!file || !file.type.startsWith("image/")) {
       toast.error("Please select an image file...")
       return;
@@ -92,42 +117,44 @@ const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
     reader.readAsDataURL(file)
   }
 
-  // Fetch messages and user data when selectedUser changes
+  // **FIXED: Fetch messages and user data when selectedUser changes**
+  // Removed function dependencies to prevent infinite loops
   useEffect(() => {
     if (selectedUser) {
-      getMessages(selectedUser);
-      fetchUserData(selectedUser);
+      memoizedGetMessages(selectedUser);
+      memoizedFetchUserData(selectedUser);
     } else {
       setSelectedUserData(null);
     }
-  }, [selectedUser, getMessages, fetchUserData, setSelectedUserData]);
+  }, [selectedUser]); // Only depend on selectedUser
 
-  // Auto scroll to bottom when new messages arrive
+  // **FIXED: Auto scroll to bottom when new messages arrive**
+  // Only scroll when messages array length changes
   useEffect(() => {
-    if (scrollEnd.current) {
+    if (scrollEnd.current && messages.length > 0) {
       scrollEnd.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages]);
+  }, [messages.length]); // Only depend on message count, not entire messages array
 
-  // Also scroll when component mounts or user changes
+  // **FIXED: Scroll when user changes - separate effect**
   useEffect(() => {
-    if (scrollEnd.current) {
+    if (scrollEnd.current && selectedUser) {
       scrollEnd.current.scrollIntoView({ behavior: "instant" });
     }
   }, [selectedUser]);
 
   // Helper function to check if message is from current user
-  const isMyMessage = (msg) => {
+  const isMyMessage = useCallback((msg) => {
     const senderId = msg.senderId?._id || msg.senderId;
     const currentUserId = authUser?._id;
     return senderId === currentUserId;
-  };
+  }, [authUser?._id]);
 
   // Handle message deletion
-  const handleDeleteMessage = (messageId) => {
+  const handleDeleteMessage = useCallback((messageId) => {
     deleteMessage(messageId);
     setClicked(null);
-  };
+  }, [deleteMessage]);
 
   if (!selectedUser) {
     return (
@@ -145,7 +172,6 @@ const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
         <div className="flex items-center gap-2"
           onClick={() => {
             if (isMobile) {
-              console.log("Profile view triggered");
               setIsOnProfile(true);
             }
           }}
@@ -299,7 +325,7 @@ const ChatContainer = ({ isOnProfile, setIsOnProfile }) => {
 
           {/* Text Input */}
           <input
-            ref={inputRef} // Now properly referenced
+            ref={inputRef}
             onChange={(e) => setInput(e.target.value)}
             value={input}
             onKeyDown={(e) => e.key === "Enter" ? handleSendMessage(e) : null}

@@ -8,22 +8,36 @@ import userIcon from "../assets/user.png";
 import logoutIcon from "../assets/turn-off.png";
 import LoaderSpinner from "../components/LoaderSpinner";
 
-
 const Sidebar = () => {
-    const { getUsers, users, selectedUser, setSelectedUser, unseenMessages, selectedUserData, chatMembers, setSelectedUserData } = useContext(ChatContext);
+    const { 
+        getUsers, 
+        users, 
+        selectedUser, 
+        setSelectedUser, 
+        unseenMessages, 
+        selectedUserData, 
+        chatMembers, 
+        setSelectedUserData,
+        clearUnreadCount // New function
+    } = useContext(ChatContext);
     const { onlineUsers, logout } = useContext(AuthContext);
     const navigate = useNavigate();
     const dropdownRef = useRef(null);
 
     const [isOpen, setIsOpen] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [input, setInput] = useState(""); // Init as empty string for proper filtering
+    const [input, setInput] = useState("");
+
+    // **DEBUG: Log unseenMessages changes**
+    useEffect(() => {
+        console.log("📊 Sidebar unseenMessages updated:", unseenMessages);
+    }, [unseenMessages]);
 
     useEffect(() => {
         getUsers();
-    }, [getUsers]);
+    }, []);
 
-    // Memoized filtered users to recalc on any dependency changes
+    // Memoized filtered users - always include selected user
     const filteredUsers = useMemo(() => {
         if (input.trim()) {
             return users.filter(user =>
@@ -31,12 +45,12 @@ const Sidebar = () => {
             );
         }
         return users.filter(user => {
-            const hasUnseenMessages = unseenMessages?.[user._id] && unseenMessages[user._id] > 0;
-            const isCurrentlySelected = selectedUser === user._id;
-            const isInChatMembers = chatMembers.some(member =>
-                (member._id ? member._id === user._id : member === user._id)
+            const hasUnseen = unseenMessages?.[user._id] && unseenMessages[user._id] > 0;
+            const isSelected = selectedUser === user._id;
+            const isChatMember = chatMembers.some(m =>
+                m._id ? m._id === user._id : m === user._id
             );
-            return hasUnseenMessages || isCurrentlySelected || isInChatMembers;
+            return hasUnseen || isSelected || isChatMember;
         });
     }, [users, unseenMessages, chatMembers, input, selectedUser]);
 
@@ -66,27 +80,38 @@ const Sidebar = () => {
             setLoading(false);
         }
     };
+
+    // **FIXED: Enhanced user selection with unread count clearing**
     const handleSelectUser = (userId) => {
-        setSelectedUser(userId);
-        setSelectedUserData(null);
+        const userExists = users.find(u => u._id === userId);
+        if (userExists) {
+            setSelectedUser(userId);
+            setSelectedUserData(null);
+            
+            // **Clear unread count when user is selected**
+            if (unseenMessages[userId]) {
+                clearUnreadCount(userId);
+            }
+        }
     };
 
     useEffect(() => {
         if (selectedUser) {
-            const newUserData = users.find((u) => u._id === selectedUser);
-            setSelectedUserData(newUserData);
+            const userData = users.find((u) => u._id === selectedUser);
+            if (userData) {
+                setSelectedUserData(userData);
+            }
         } else {
             setSelectedUserData(null);
         }
-    }, [selectedUser, users]);
-
+    }, [selectedUser]);
 
     return (
         <>
             <div className={`bg-[#000ea6]/10 h-full p-5 overflow-y-scroll text-white ${selectedUser ? "max-md:hidden" : ""}`}>
                 <div className="pb-5 flex justify-between items-start">
                     <div className="flex items-center">
-                        <img src={logoImg} alt="logo" className="rounded-full ml-[5px] mt-[5px] max-w-10" />
+                        <img src={logoImg} alt="Chat Logo" className="rounded-full ml-[5px] mt-[5px] max-w-10" />
                         <h1 className="m-auto text-lg text-black font-bold">Hello Chats</h1>
                     </div>
                     <div className="relative group mr-[10px]" ref={dropdownRef}>
@@ -104,15 +129,15 @@ const Sidebar = () => {
                         <div
                             className={`absolute top-full right-0 z-20 w-32 p-5 rounded-md bg-[#3579ff3b] border border-grey-600 text-grey-100 cursor-pointer ${isOpen ? "block" : "hidden"} group-hover:block`}
                         >
-                            <p onClick={() => navigate("/profile")} className="cursor-pointer flex gap-[5px] text-sm">
+                            <button onClick={() => navigate("/profile")} className="cursor-pointer flex gap-[5px] text-sm w-full text-left border-none bg-transparent text-inherit">
                                 <img src={userIcon} alt="profile" className="max-w-5 bg-white rounded-full" />
                                 Profile
-                            </p>
+                            </button>
                             <hr className="my-2 border-t border-grey-500" />
-                            <p onClick={handleLogout} className="cursor-pointer flex gap-[5px] text-sm">
+                            <button onClick={handleLogout} className="cursor-pointer flex gap-[5px] text-sm w-full text-left border-none bg-transparent text-inherit">
                                 <img src={logoutIcon} alt="logout" className="max-w-5 bg-white rounded-full" />
                                 Logout
-                            </p>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -139,8 +164,9 @@ const Sidebar = () => {
                         <div
                             key={user._id}
                             onClick={() => handleSelectUser(user._id)}
-                            className={`relative flex items-center gap-2 p-2 pl-4 rounded cursor-pointer max-sm:text-sm ${selectedUserData && selectedUserData._id === user._id ? "bg-[#282142]/50" : ""
-                                }`}
+                            className={`relative flex items-center gap-2 p-2 pl-4 rounded cursor-pointer max-sm:text-sm ${
+                                selectedUser === user._id ? "bg-[#282142]/50" : ""
+                            }`}
                         >
                             <img
                                 src={user?.profilePic || avatar_icon}
@@ -155,7 +181,8 @@ const Sidebar = () => {
                                     <span className="text-neutral-400 text-xs">Offline</span>
                                 )}
                             </div>
-                            {unseenMessages?.[user._id] && (
+                            {/* **FIXED: Show real-time unread count** */}
+                            {unseenMessages?.[user._id] && unseenMessages[user._id] > 0 && (
                                 <p className="absolute top-4 right-4 text-xs h-5 w-5 flex justify-center items-center rounded-full bg-violet-500/50">
                                     {unseenMessages[user._id]}
                                 </p>

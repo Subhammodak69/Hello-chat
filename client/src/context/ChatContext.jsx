@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { AuthContext } from "./AuthContext";
 import toast from "react-hot-toast";
 
@@ -15,8 +15,22 @@ export const ChatProvider = ({ children }) => {
 
     const { socket, axios, authUser } = useContext(AuthContext);
 
+    // Memoize getUsers to prevent unnecessary re-renders
+    const getUsers = useCallback(async () => {
+        try {
+            const { data } = await axios.get("/api/messages/users");
+            if (data.success) {
+                setUsers(data.users);
+                setUnseenMessages(data.unseenMessages);
+                setChatMembers(data.chatMembers);
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || error.message);
+        }
+    }, [axios]);
+
     // Join chat room for real-time updates
-    const joinChatRoom = (userId) => {
+    const joinChatRoom = useCallback((userId) => {
         if (!socket || !authUser) return;
 
         if (currentRoom) {
@@ -26,25 +40,24 @@ export const ChatProvider = ({ children }) => {
         const room = [authUser._id.toString(), userId.toString()].sort().join("-");
         socket.emit("joinRoom", room);
         setCurrentRoom(room);
-        console.log(`Joined room: ${room}`);
-    };
+    }, [socket, authUser, currentRoom]);
 
     useEffect(() => {
         if (socket && authUser && selectedUser) {
             joinChatRoom(selectedUser);
         }
-    }, [socket, authUser, selectedUser]);
-
+    }, [socket, authUser, selectedUser, joinChatRoom]);
 
     useEffect(() => {
         if (!socket) return;
 
         const handleNewMessage = (newMessage) => {
-            console.log("New message received:", newMessage);
+            console.log("📨 New message received:", newMessage); // Debug log
+
             const isCurrentConversation = selectedUser &&
                 (newMessage.senderId === selectedUser ||
-                 newMessage.receiverId === selectedUser ||
-                 newMessage.senderId === authUser?._id);
+                    newMessage.receiverId === selectedUser ||
+                    newMessage.senderId === authUser?._id);
 
             if (isCurrentConversation) {
                 const messageWithSender = {
@@ -58,58 +71,76 @@ export const ChatProvider = ({ children }) => {
                     return exists ? prev : [...prev, messageWithSender];
                 });
 
+                // Mark message as read if it's from the selected user
                 if (newMessage.senderId === selectedUser && newMessage.senderId !== authUser?._id) {
                     axios.put(`/api/messages/mark/${newMessage._id}`).catch(console.error);
                 }
             } else if (newMessage.senderId !== authUser?._id) {
-                setUnseenMessages(prev => ({
-                    ...prev,
-                    [newMessage.senderId]: (prev[newMessage.senderId] || 0) + 1
-                }));
+                // **FIXED: Real-time unread count update**
+                console.log("📊 Updating unread count for:", newMessage.senderId); // Debug log
+                setUnseenMessages(prev => {
+                    const updated = {
+                        ...prev,
+                        [newMessage.senderId]: (prev[newMessage.senderId] || 0) + 1
+                    };
+                    console.log("📊 Updated unseenMessages:", updated); // Debug log
+                    return updated;
+                });
             }
         };
 
         const handleMessageDeleted = ({ messageId }) => {
-            console.log("Message deleted event received:", messageId);
-            setMessages(prev => {
-                const filtered = prev.filter(m => m._id !== messageId);
-                console.log(`Removed message ${messageId}. Messages before: ${prev.length}, after: ${filtered.length}`);
-                return filtered;
-            });
+            setMessages(prev => prev.filter(m => m._id !== messageId));
         };
 
-        // Sidebar update handler: update user list, unseenMessages, chatMembers
         const handleSidebarUpdate = (sidebarData) => {
-            console.log("Received updateSidebar event:", sidebarData);
-            if (sidebarData.users) setUsers(sidebarData.users);
-            if (sidebarData.unseenMessages) setUnseenMessages(sidebarData.unseenMessages);
-            if (sidebarData.chatMembers) setChatMembers(sidebarData.chatMembers);
+            console.log("🔄 Sidebar update received:", sidebarData);
+
+            if (sidebarData.users) {
+                setUsers(sidebarData.users);
+            }
+            if (sidebarData.unseenMessages) {
+                setUnseenMessages(sidebarData.unseenMessages);
+                // Force users array to update with new reference so React re-renders
+                setUsers(prevUsers => [...prevUsers]);
+            }
+            if (sidebarData.chatMembers) {
+                setChatMembers(sidebarData.chatMembers);
+            }
         };
 
+        const handleUnreadCountUpdate = (data) => {
+            console.log("📊 Direct unread count update:", data);
+            if (data.userId && typeof data.count !== 'undefined') {
+                setUnseenMessages(prev => ({
+                    ...prev,
+                    [data.userId]: data.count
+                }));
+                // Force users array to update with new reference so React re-renders
+                setUsers(prevUsers => [...prevUsers]);
+            }
+        };
+
+
+        // Clean up old listeners
+        socket.off("newMessage");
+        socket.off("messageDeleted");
+        socket.off("updateSidebar");
+        socket.off("unreadCountUpdate");
+
+        // Register new listeners
         socket.on("newMessage", handleNewMessage);
         socket.on("messageDeleted", handleMessageDeleted);
         socket.on("updateSidebar", handleSidebarUpdate);
+        socket.on("unreadCountUpdate", handleUnreadCountUpdate);
 
         return () => {
             socket.off("newMessage", handleNewMessage);
             socket.off("messageDeleted", handleMessageDeleted);
             socket.off("updateSidebar", handleSidebarUpdate);
+            socket.off("unreadCountUpdate", handleUnreadCountUpdate);
         };
-    }, [socket, selectedUser, authUser, axios]);
-
-    const getUsers = async () => {
-        try {
-            const { data } = await axios.get("/api/messages/users");
-            console.log("getUsers response:", data);
-            if (data.success) {
-                setUsers(data.users);
-                setUnseenMessages(data.unseenMessages);
-                setChatMembers(data.chatMembers);
-            }
-        } catch (error) {
-            toast.error(error.response?.data?.message || error.message);
-        }
-    };
+    }, [socket, selectedUser, authUser, axios, getUsers]);
 
     const fetchUserData = async (userId) => {
         try {
@@ -133,9 +164,13 @@ export const ChatProvider = ({ children }) => {
                 }));
                 setMessages(messagesWithSenderInfo);
 
+                // **FIXED: Clear unread count when messages are fetched**
                 setUnseenMessages(prev => {
                     const updated = { ...prev };
-                    delete updated[userId];
+                    if (updated[userId]) {
+                        delete updated[userId];
+                        console.log("📊 Cleared unread count for:", userId);
+                    }
                     return updated;
                 });
             }
@@ -163,6 +198,15 @@ export const ChatProvider = ({ children }) => {
         }
     };
 
+    // **NEW: Function to manually clear unread count**
+    const clearUnreadCount = useCallback((userId) => {
+        setUnseenMessages(prev => {
+            const updated = { ...prev };
+            delete updated[userId];
+            return updated;
+        });
+    }, []);
+
     const value = {
         messages,
         users,
@@ -180,6 +224,7 @@ export const ChatProvider = ({ children }) => {
         deleteMessage,
         chatMembers,
         joinChatRoom,
+        clearUnreadCount, // New function
     };
 
     return (

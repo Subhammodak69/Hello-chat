@@ -1,242 +1,242 @@
+import mongoose from "mongoose";
 import Message from "../models/Message.js";
 import User from "../models/User.js";
 import cloudinary from "../lib/cloudinary.js";
 import { io, userSocketMap } from "../server.js";
 
+// Helper: get unseen counts per sender for a user
+const getUnseenMessagesForUser = async (userId) => {
+  const agg = await Message.aggregate([
+    { $match: { receiverId: mongoose.Types.ObjectId(userId), seen: false } },
+    { $group: { _id: "$senderId", count: { $sum: 1 } } }
+  ]);
+  return agg.reduce((map, item) => {
+    map[item._id.toString()] = item.count;
+    return map;
+  }, {});
+};
+
+// Helper: get chat members for sidebar
+const getChatMembersForUser = async (userId) => {
+  const sent = await Message.distinct("receiverId", {
+    senderId: mongoose.Types.ObjectId(userId)
+  });
+  const received = await Message.distinct("senderId", {
+    receiverId: mongoose.Types.ObjectId(userId)
+  });
+  const all = Array.from(new Set([...sent, ...received].map(id => id.toString())));
+  return all.filter(id => id !== userId.toString());
+};
+
 // DELETE /api/messages/:id
 export const deleteMessage = async (req, res) => {
-    try {
-        const { id } = req.params;
-        
-        // Fetch message before delete to get sender and receiver info
-        const msg = await Message.findById(id);
-        if (!msg) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Message not found" 
-            });
-        }
-
-        // Verify that the user deleting is the sender
-        if (msg.senderId.toString() !== req.user._id.toString()) {
-            return res.status(403).json({
-                success: false,
-                message: "You can only delete your own messages"
-            });
-        }
-
-        // Delete the message
-        await Message.findByIdAndDelete(id);
-
-        // Create room name with consistent string formatting
-        const room = [msg.senderId.toString(), msg.receiverId.toString()].sort().join("-");
-        
-        console.log(`Emitting messageDeleted to room: ${room}, messageId: ${id}`);
-        console.log(`Online users in room:`, Object.keys(userSocketMap));
-        
-        // Emit to room that message was deleted
-        io.to(room).emit("messageDeleted", { messageId: id });
-
-        res.json({ 
-            success: true, 
-            message: "Message deleted successfully" 
-        });
-    } catch (error) {
-        console.error("Error deleting message:", error);
-        res.status(500).json({ 
-            success: false, 
-            message: error.message 
-        });
-    }
-};
-
-// Send message to selected user (updated for consistency)
-export const sendMessage = async (req, res) => {
-    try {
-        const { text, image } = req.body;
-        const receiverId = req.params.id;
-        const senderId = req.user._id;
-
-        // Verify receiver user exists
-        const receiverUser = await User.findById(receiverId).select("fullName profilePic");
-        if (!receiverUser) {
-            return res.status(404).json({ success: false, message: "Receiver user not found" });
-        }
-
-        let imageUrl;
-        if (image) {
-            const uploadResponse = await cloudinary.uploader.upload(image);
-            imageUrl = uploadResponse.secure_url;
-        }
-
-        const newMessage = await Message.create({
-            senderId,
-            receiverId: receiverUser._id,
-            text,
-            image: imageUrl
-        });
-
-        // Get sender data
-        const senderData = await User.findById(senderId).select("fullName profilePic");
-
-        // Create message object for socket emission
-        const messageForSocket = {
-            ...newMessage.toObject(),
-            senderData: senderData
-        };
-
-        // Create room name with consistent string formatting
-        const room = [senderId.toString(), receiverId.toString()].sort().join("-");
-        console.log(`Emitting newMessage to room: ${room}`);
-        
-        // Emit to room instead of individual sockets
-        io.to(room).emit("newMessage", messageForSocket);
-
-        res.json({
-            success: true,
-            newMessage: newMessage,
-            senderData: senderData
-        });
-
-    } catch (error) {
-        console.error("Send message error:", error);
-        res.status(500).json({ success: false, message: error.message });
-    }
-};
-
-// Keep your other functions the same...
-export const markMessageAsSeen = async (req, res) => {
-    try {
-        const { id } = req.params;
-        await Message.findByIdAndUpdate(id, { seen: true });
-        res.json({ success: true });
-    } catch (error) {
-        res.json({ success: false, message: error.message });
-    }
-};
-
-export const getMessages = async (req, res) => {
-    try {
-        const { id: selectedUserId } = req.params;
-        const myId = req.user._id;
-
-        const messages = await Message.find({
-            $or: [
-                { senderId: myId, receiverId: selectedUserId },
-                { senderId: selectedUserId, receiverId: myId },
-            ]
-        }).populate('senderId', 'fullName profilePic').sort({ createdAt: 1 });
-
-        // Mark messages as seen
-        await Message.updateMany(
-            { senderId: selectedUserId, receiverId: myId },
-            { seen: true }
-        );
-
-        // Format messages with sender data
-        const formattedMessages = messages.map(msg => ({
-            ...msg.toObject(),
-            senderData: msg.senderId
-        }));
-
-        res.json({ success: true, messages: formattedMessages });
-    } catch (error) {
-        res.json({ success: false, message: error.message });
-    }
-};
-
-export const getUsersForSidebar = async (req, res) => {
-    try {
-        const userId = req.user._id;
-        const allOtherUsers = await User.find({ _id: { $ne: userId } }).select("-password");
-        const senderIds = allOtherUsers.map(user => user._id);
-
-        const unseenMessages = await Message.aggregate([
-            {
-                $match: {
-                    senderId: { $in: senderIds },
-                    receiverId: userId,
-                    seen: false
-                }
-            },
-            {
-                $group: {
-                    _id: "$senderId",
-                    count: { $sum: 1 }
-                }
-            }
-        ]);
-
-        const chatMembers = await Message.aggregate([
-            {
-                $match: {
-                    $or: [
-                        { senderId: userId },
-                        { receiverId: userId }
-                    ]
-                }
-            },
-            {
-                $project: {
-                    userId1: "$senderId",
-                    userId2: "$receiverId",
-                }
-            },
-            {
-                $project: {
-                    otherUserId: {
-                        $cond: [
-                            { $eq: ["$userId1", userId] },
-                            "$userId2",
-                            "$userId1"
-                        ]
-                    }
-                }
-            },
-            {
-                $group: {
-                    _id: "$otherUserId"
-                }
-            },
-            {
-                $lookup: {
-                    from: "users",
-                    localField: "_id",
-                    foreignField: "_id",
-                    as: "userDetails"
-                }
-            },
-            {
-                $unwind: "$userDetails"
-            },
-            {
-                $replaceRoot: { newRoot: "$userDetails" }
-            }
-        ]);
-
-        const unseenMessagesMap = {};
-        unseenMessages.forEach(item => {
-            unseenMessagesMap[item._id.toString()] = item.count;
-        });
-
-        res.json({ success: true, users: allOtherUsers, unseenMessages: unseenMessagesMap, chatMembers: chatMembers });
-    } catch (error) {
-        res.json({ success: false, message: error.message });
-    }
-};
-
-export const getUserData = async (req, res) => {
+  try {
     const { id } = req.params;
-    try {
-        if (!id) {
-            return res.status(400).json({ success: false, message: "User ID not provided" });
-        }
-        const userObject = await User.findById(id);
-        if (!userObject) {
-            return res.status(404).json({ success: false, message: "User not found" });
-        }
-        res.json({ success: true, user: userObject });
-    } catch (error) {
-        res.status(500).json({ success: false, message: "Server error" });
+    const msg = await Message.findById(id);
+    if (!msg) {
+      return res.status(404).json({ success: false, message: "Message not found" });
     }
+    if (msg.senderId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: "You can only delete your own messages" });
+    }
+
+    await Message.findByIdAndDelete(id);
+
+    // Notify both parties in the room
+    const room = [msg.senderId, msg.receiverId].map(String).sort().join("-");
+    io.to(room).emit("messageDeleted", { messageId: id });
+
+    // Also update both sidebars
+    [msg.senderId, msg.receiverId].forEach(async userId => {
+      const socketId = userSocketMap[userId.toString()];
+      if (socketId) {
+        const unseen = await getUnseenMessagesForUser(userId);
+        const members = await getChatMembersForUser(userId);
+        io.to(socketId).emit("updateSidebar", {
+          unseenMessages: unseen,
+          chatMembers: members
+        });
+      }
+    });
+
+    res.json({ success: true, message: "Message deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting message:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// POST /api/messages/:id
+export const sendMessage = async (req, res) => {
+  try {
+    const { text, image } = req.body;
+    const receiverId = req.params.id;
+    const senderId = req.user._id;
+
+    // Verify receiver exists
+    const receiverUser = await User.findById(receiverId).select("fullName profilePic");
+    if (!receiverUser) {
+      return res.status(404).json({ success: false, message: "Receiver user not found" });
+    }
+
+    let imageUrl;
+    if (image) {
+      const uploadResp = await cloudinary.uploader.upload(image);
+      imageUrl = uploadResp.secure_url;
+    }
+
+    const newMessage = await Message.create({
+      senderId,
+      receiverId,
+      text,
+      image: imageUrl
+    });
+
+    const senderData = await User.findById(senderId).select("fullName profilePic");
+    const payload = { ...newMessage.toObject(), senderData };
+
+    // Emit newMessage to the room
+    const room = [senderId, receiverId].map(String).sort().join("-");
+    io.to(room).emit("newMessage", payload);
+
+    // Update unread count & sidebar for receiver
+    const receiverSocket = userSocketMap[receiverId];
+    if (receiverSocket) {
+      const unseen = await getUnseenMessagesForUser(receiverId);
+      const members = await getChatMembersForUser(receiverId);
+      // Direct unread count update
+      io.to(receiverSocket).emit("unreadCountUpdate", {
+        userId: senderId.toString(),
+        count: unseen[senderId.toString()] || 0
+      });
+      // Full sidebar state
+      io.to(receiverSocket).emit("updateSidebar", {
+        unseenMessages: unseen,
+        chatMembers: members
+      });
+    }
+
+    // Update sidebar for sender as well
+    const senderSocket = userSocketMap[senderId];
+    if (senderSocket) {
+      const unseenSender = await getUnseenMessagesForUser(senderId);
+      const membersSender = await getChatMembersForUser(senderId);
+      io.to(senderSocket).emit("updateSidebar", {
+        unseenMessages: unseenSender,
+        chatMembers: membersSender
+      });
+    }
+
+    res.json({ success: true, newMessage, senderData });
+  } catch (error) {
+    console.error("Send message error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// PUT /api/messages/mark/:id
+export const markMessageAsSeen = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+    const msg = await Message.findByIdAndUpdate(id, { seen: true });
+    if (!msg) {
+      return res.status(404).json({ success: false, message: "Message not found" });
+    }
+
+    // Notify user of updated unread count
+    const socketId = userSocketMap[userId.toString()];
+    if (socketId) {
+      const unseen = await getUnseenMessagesForUser(userId);
+      io.to(socketId).emit("unreadCountUpdate", {
+        userId: msg.senderId.toString(),
+        count: unseen[msg.senderId.toString()] || 0
+      });
+      io.to(socketId).emit("updateSidebar", { unseenMessages: unseen });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Mark seen error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// GET /api/messages/:id
+export const getMessages = async (req, res) => {
+  try {
+    const selectedUserId = req.params.id;
+    const myId = req.user._id;
+    const msgs = await Message.find({
+      $or: [
+        { senderId: myId, receiverId: selectedUserId },
+        { senderId: selectedUserId, receiverId: myId }
+      ]
+    })
+      .populate("senderId", "fullName profilePic")
+      .sort({ createdAt: 1 });
+
+    // Mark all as seen
+    await Message.updateMany(
+      { senderId: selectedUserId, receiverId: myId },
+      { seen: true }
+    );
+
+    const formatted = msgs.map(m => ({
+      ...m.toObject(),
+      senderData: m.senderId
+    }));
+
+    res.json({ success: true, messages: formatted });
+  } catch (error) {
+    console.error("Get messages error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// GET /api/messages/users
+export const getUsersForSidebar = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const others = await User.find({ _id: { $ne: userId } }).select("-password");
+
+    const unseenAgg = await Message.aggregate([
+      { $match: { receiverId: mongoose.Types.ObjectId(userId), seen: false } },
+      { $group: { _id: "$senderId", count: { $sum: 1 } } }
+    ]);
+    const unseenMap = unseenAgg.reduce((map, i) => {
+      map[i._id.toString()] = i.count;
+      return map;
+    }, {});
+
+    const members = await getChatMembersForUser(userId);
+
+    res.json({
+      success: true,
+      users: others,
+      unseenMessages: unseenMap,
+      chatMembers: members
+    });
+  } catch (error) {
+    console.error("Get sidebar users error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// GET /api/messages/user-data/:id
+export const getUserData = async (req, res) => {
+  const { id } = req.params;
+  try {
+    if (!id) {
+      return res.status(400).json({ success: false, message: "User ID not provided" });
+    }
+    const userObj = await User.findById(id);
+    if (!userObj) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+    res.json({ success: true, user: userObj });
+  } catch (error) {
+    console.error("Get user data error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
 };
