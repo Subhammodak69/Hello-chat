@@ -7,7 +7,7 @@ import { io, userSocketMap } from "../server.js";
 // Helper: get unseen counts per sender for a user
 const getUnseenMessagesForUser = async (userId) => {
   const agg = await Message.aggregate([
-    { $match: { receiverId: mongoose.Types.ObjectId(userId), seen: false } },
+    { $match: { receiverId: new mongoose.Types.ObjectId(userId), seen: false } }, // FIXED
     { $group: { _id: "$senderId", count: { $sum: 1 } } }
   ]);
   return agg.reduce((map, item) => {
@@ -16,17 +16,22 @@ const getUnseenMessagesForUser = async (userId) => {
   }, {});
 };
 
-// Helper: get chat members for sidebar
 const getChatMembersForUser = async (userId) => {
   const sent = await Message.distinct("receiverId", {
-    senderId: mongoose.Types.ObjectId(userId)
+    senderId: new mongoose.Types.ObjectId(userId) // FIXED
   });
   const received = await Message.distinct("senderId", {
-    receiverId: mongoose.Types.ObjectId(userId)
+    receiverId: new mongoose.Types.ObjectId(userId) // FIXED
   });
   const all = Array.from(new Set([...sent, ...received].map(id => id.toString())));
   return all.filter(id => id !== userId.toString());
 };
+
+// In the getUsersForSidebar controller:
+const unseenAgg = await Message.aggregate([
+  { $match: { receiverId: new mongoose.Types.ObjectId(userId), seen: false } }, // FIXED
+  { $group: { _id: "$senderId", count: { $sum: 1 } } }
+]);
 
 // DELETE /api/messages/:id
 export const deleteMessage = async (req, res) => {
