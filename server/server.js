@@ -13,7 +13,7 @@ const server = http.createServer(app);
 // CORS options
 const corsOptions = {
     origin: [
-        "https://hello-chat-five.vercel.app",   // No trailing slash
+        "https://hello-chat-ashy.vercel.app",   // No trailing slash
         "http://localhost:3000",                 // Local dev
         "http://localhost:5173"                  // Vite dev server
     ],
@@ -147,7 +147,7 @@ const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, "0.0.0.0", () => {
     console.log(`🚀 Server is running on PORT: ${PORT}`);
-    console.log(`🌐 Frontend URL: https://hello-chat-five.vercel.app`);
+    console.log(`🌐 Frontend URL: https://hello-chat-ashy.vercel.app`);
     console.log("📡 Socket.io server is ready");
 });
 
