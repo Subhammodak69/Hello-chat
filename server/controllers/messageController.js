@@ -4,10 +4,10 @@ import User from "../models/User.js";
 import cloudinary from "../lib/cloudinary.js";
 import { io, userSocketMap } from "../server.js";
 
-// Helper: get unseen counts per sender for a user
+// Helper to get unseen message counts for a user
 const getUnseenMessagesForUser = async (userId) => {
   const agg = await Message.aggregate([
-    { $match: { receiverId: new mongoose.Types.ObjectId(userId), seen: false } }, // FIXED
+    { $match: { receiverId: new mongoose.Types.ObjectId(userId), seen: false } },
     { $group: { _id: "$senderId", count: { $sum: 1 } } }
   ]);
   return agg.reduce((map, item) => {
@@ -16,22 +16,17 @@ const getUnseenMessagesForUser = async (userId) => {
   }, {});
 };
 
+// Helper to get chat members for a user
 const getChatMembersForUser = async (userId) => {
   const sent = await Message.distinct("receiverId", {
-    senderId: new mongoose.Types.ObjectId(userId) // FIXED
+    senderId: new mongoose.Types.ObjectId(userId)
   });
   const received = await Message.distinct("senderId", {
-    receiverId: new mongoose.Types.ObjectId(userId) // FIXED
+    receiverId: new mongoose.Types.ObjectId(userId)
   });
   const all = Array.from(new Set([...sent, ...received].map(id => id.toString())));
   return all.filter(id => id !== userId.toString());
 };
-
-// In the getUsersForSidebar controller:
-const unseenAgg = await Message.aggregate([
-  { $match: { receiverId: new mongoose.Types.ObjectId(userId), seen: false } }, // FIXED
-  { $group: { _id: "$senderId", count: { $sum: 1 } } }
-]);
 
 // DELETE /api/messages/:id
 export const deleteMessage = async (req, res) => {
@@ -47,11 +42,10 @@ export const deleteMessage = async (req, res) => {
 
     await Message.findByIdAndDelete(id);
 
-    // Notify both parties in the room
     const room = [msg.senderId, msg.receiverId].map(String).sort().join("-");
     io.to(room).emit("messageDeleted", { messageId: id });
 
-    // Also update both sidebars
+    // Update sidebars for both sender and receiver
     [msg.senderId, msg.receiverId].forEach(async userId => {
       const socketId = userSocketMap[userId.toString()];
       if (socketId) {
@@ -71,14 +65,13 @@ export const deleteMessage = async (req, res) => {
   }
 };
 
-// POST /api/messages/:id
+// POST /api/messages/:id (send message)
 export const sendMessage = async (req, res) => {
   try {
     const { text, image } = req.body;
     const receiverId = req.params.id;
     const senderId = req.user._id;
 
-    // Verify receiver exists
     const receiverUser = await User.findById(receiverId).select("fullName profilePic");
     if (!receiverUser) {
       return res.status(404).json({ success: false, message: "Receiver user not found" });
@@ -100,28 +93,25 @@ export const sendMessage = async (req, res) => {
     const senderData = await User.findById(senderId).select("fullName profilePic");
     const payload = { ...newMessage.toObject(), senderData };
 
-    // Emit newMessage to the room
     const room = [senderId, receiverId].map(String).sort().join("-");
     io.to(room).emit("newMessage", payload);
 
-    // Update unread count & sidebar for receiver
+    // Update sidebar unread count for receiver
     const receiverSocket = userSocketMap[receiverId];
     if (receiverSocket) {
       const unseen = await getUnseenMessagesForUser(receiverId);
       const members = await getChatMembersForUser(receiverId);
-      // Direct unread count update
       io.to(receiverSocket).emit("unreadCountUpdate", {
         userId: senderId.toString(),
         count: unseen[senderId.toString()] || 0
       });
-      // Full sidebar state
       io.to(receiverSocket).emit("updateSidebar", {
         unseenMessages: unseen,
         chatMembers: members
       });
     }
 
-    // Update sidebar for sender as well
+    // Update sidebar for sender
     const senderSocket = userSocketMap[senderId];
     if (senderSocket) {
       const unseenSender = await getUnseenMessagesForUser(senderId);
@@ -149,7 +139,6 @@ export const markMessageAsSeen = async (req, res) => {
       return res.status(404).json({ success: false, message: "Message not found" });
     }
 
-    // Notify user of updated unread count
     const socketId = userSocketMap[userId.toString()];
     if (socketId) {
       const unseen = await getUnseenMessagesForUser(userId);
@@ -167,21 +156,22 @@ export const markMessageAsSeen = async (req, res) => {
   }
 };
 
-// GET /api/messages/:id
+// GET /api/messages/:id (get messages between current and selected user)
 export const getMessages = async (req, res) => {
   try {
     const selectedUserId = req.params.id;
     const myId = req.user._id;
+
     const msgs = await Message.find({
       $or: [
         { senderId: myId, receiverId: selectedUserId },
         { senderId: selectedUserId, receiverId: myId }
       ]
     })
-      .populate("senderId", "fullName profilePic")
-      .sort({ createdAt: 1 });
+    .populate("senderId", "fullName profilePic")
+    .sort({ createdAt: 1 });
 
-    // Mark all as seen
+    // Mark as seen
     await Message.updateMany(
       { senderId: selectedUserId, receiverId: myId },
       { seen: true }
@@ -199,16 +189,18 @@ export const getMessages = async (req, res) => {
   }
 };
 
-// GET /api/messages/users
+// GET /api/messages/users (users for sidebar)
 export const getUsersForSidebar = async (req, res) => {
   try {
     const userId = req.user._id;
+
     const others = await User.find({ _id: { $ne: userId } }).select("-password");
 
     const unseenAgg = await Message.aggregate([
       { $match: { receiverId: mongoose.Types.ObjectId(userId), seen: false } },
       { $group: { _id: "$senderId", count: { $sum: 1 } } }
     ]);
+
     const unseenMap = unseenAgg.reduce((map, i) => {
       map[i._id.toString()] = i.count;
       return map;
