@@ -197,7 +197,7 @@ export const getUsersForSidebar = async (req, res) => {
     const others = await User.find({ _id: { $ne: userId } }).select("-password");
 
     const unseenAgg = await Message.aggregate([
-      { $match: { receiverId: mongoose.Types.ObjectId(userId), seen: false } },
+      { $match: { receiverId:new mongoose.Types.ObjectId(userId), seen: false } },
       { $group: { _id: "$senderId", count: { $sum: 1 } } }
     ]);
 
