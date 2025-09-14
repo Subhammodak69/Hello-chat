@@ -3,7 +3,7 @@ import "dotenv/config";
 import cors from "cors";
 import http from "http";
 import { connectDB } from "./lib/db.js";
-import userRouter from "./routes/userRoutes.js"
+import userRouter from "./routes/userRoutes.js";
 import messageRouter from "./routes/messageRoutes.js";
 import { Server } from "socket.io";
 
@@ -13,26 +13,23 @@ const server = http.createServer(app);
 // CORS options
 const corsOptions = {
     origin: [
-        "https://hello-chat-five.vercel.app",  // No trailing slash
-        "http://localhost:3000",                // For local development
-        "http://localhost:5173"                 // For Vite dev server
+        "https://hello-chat-five.vercel.app",   // No trailing slash
+        "http://localhost:3000",                 // Local dev
+        "http://localhost:5173"                  // Vite dev server
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
-    optionsSuccessStatus: 200 // For legacy browsers
+    optionsSuccessStatus: 200
 };
 
 // Use CORS middleware globally before routes
 app.use(cors(corsOptions));
 
-// Handle preflight OPTIONS requests explicitly
-app.options('/*', cors(corsOptions));
-
 app.use(express.json({ limit: "4mb" }));
 
-// Socket.io server setup with CORS config
+// Socket.io setup
 export const io = new Server(server, {
-    cors: { 
+    cors: {
         origin: corsOptions.origin,
         methods: corsOptions.methods,
         credentials: true
@@ -40,7 +37,7 @@ export const io = new Server(server, {
     transports: ["websocket", "polling"],
 });
 
-// Middleware to extract userId from auth in socket handshake
+// Socket.io middleware to extract userId
 io.use((socket, next) => {
     const userId = socket.handshake.auth.userId;
     if (!userId) {
@@ -53,7 +50,7 @@ io.use((socket, next) => {
 // Store online users map
 export const userSocketMap = {}; // { userId: socketId }
 
-// Helper function to get receiver's socket ID
+// Helper to get receiver socket ID
 export const getReceiverSocketId = (receiverId) => {
     return userSocketMap[receiverId];
 };
@@ -63,27 +60,22 @@ io.on("connection", (socket) => {
     const userId = socket.userId;
     console.log("User Connected:", userId, "Socket ID:", socket.id);
 
-    // Store user's socket ID
     if (userId && userId !== "undefined") {
         userSocketMap[userId] = socket.id;
     }
 
-    // Emit updated online users list
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
 
-    // Handle joining chat rooms for real-time updates
     socket.on("joinRoom", (room) => {
         socket.join(room);
         console.log(`User ${userId} (${socket.id}) joined room: ${room}`);
     });
 
-    // Handle leaving chat rooms
     socket.on("leaveRoom", (room) => {
         socket.leave(room);
         console.log(`User ${userId} (${socket.id}) left room: ${room}`);
     });
 
-    // Handle user disconnection
     socket.on("disconnect", () => {
         console.log("User disconnected:", userId);
         if (userId) {
@@ -92,7 +84,6 @@ io.on("connection", (socket) => {
         io.emit("getOnlineUsers", Object.keys(userSocketMap));
     });
 
-    // Handle user logout
     socket.on("userLogout", () => {
         console.log("User logged out:", userId);
         if (userId) {
@@ -104,18 +95,18 @@ io.on("connection", (socket) => {
 
 // Request logging middleware
 app.use((req, res, next) => {
-    console.log(`${req.method} ${req.originalUrl}`, req.headers.authorization ? 'WITH AUTH' : 'NO AUTH');
-    console.log('Origin:', req.headers.origin);
+    console.log(`${req.method} ${req.originalUrl}`, req.headers.authorization ? "WITH AUTH" : "NO AUTH");
+    console.log("Origin:", req.headers.origin);
     next();
 });
 
-// Route for status check
+// Status route
 app.use("/api/status", (req, res) => {
-    res.json({ 
-        success: true, 
-        message: "Server is live", 
+    res.json({
+        success: true,
+        message: "Server is live",
         timestamp: new Date().toISOString(),
-        onlineUsers: Object.keys(userSocketMap).length
+        onlineUsers: Object.keys(userSocketMap).length,
     });
 });
 
@@ -123,27 +114,27 @@ app.use("/api/status", (req, res) => {
 app.use("/api/auth", userRouter);
 app.use("/api/messages", messageRouter);
 
-// Error handling middleware
+// Error handling
 app.use((err, req, res, next) => {
     console.error("Server error:", err);
-    res.status(500).json({ 
-        success: false, 
-        message: "Internal server error" 
+    res.status(500).json({
+        success: false,
+        message: "Internal server error",
     });
 });
 
-// 404 route handler
+// 404 handler
 app.use((req, res) => {
     console.log(`404 - Route not found: ${req.method} ${req.originalUrl}`);
-    res.status(404).json({ 
-        success: false, 
+    res.status(404).json({
+        success: false,
         message: "Route not found",
         path: req.originalUrl,
-        method: req.method
+        method: req.method,
     });
 });
 
-// Connect to MongoDB
+// Connect MongoDB then start server
 try {
     await connectDB();
     console.log("✅ Database connected successfully");
@@ -154,24 +145,24 @@ try {
 
 const PORT = process.env.PORT || 5000;
 
-server.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, "0.0.0.0", () => {
     console.log(`🚀 Server is running on PORT: ${PORT}`);
     console.log(`🌐 Frontend URL: https://hello-chat-five.vercel.app`);
-    console.log(`📡 Socket.io server is ready`);
+    console.log("📡 Socket.io server is ready");
 });
 
-// Graceful shutdown handlers
-process.on('SIGTERM', () => {
-    console.log('SIGTERM received. Shutting down gracefully...');
+// Graceful shutdown
+process.on("SIGTERM", () => {
+    console.log("SIGTERM received. Shutting down gracefully...");
     server.close(() => {
-        console.log('Process terminated');
+        console.log("Process terminated");
     });
 });
 
-process.on('SIGINT', () => {
-    console.log('SIGINT received. Shutting down gracefully...');
+process.on("SIGINT", () => {
+    console.log("SIGINT received. Shutting down gracefully...");
     server.close(() => {
-        console.log('Process terminated');
+        console.log("Process terminated");
     });
 });
 
