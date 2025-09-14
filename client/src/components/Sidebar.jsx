@@ -10,7 +10,7 @@ import LoaderSpinner from "../components/LoaderSpinner";
 
 
 const Sidebar = () => {
-    const { getUsers, users, selectedUser, setSelectedUser, unseenMessages, selectedUserData, chatMembers } = useContext(ChatContext);
+    const { getUsers, users, selectedUser, setSelectedUser, unseenMessages, selectedUserData, chatMembers, setSelectedUserData } = useContext(ChatContext);
     const { onlineUsers, logout } = useContext(AuthContext);
     const navigate = useNavigate();
     const dropdownRef = useRef(null);
@@ -66,6 +66,20 @@ const Sidebar = () => {
             setLoading(false);
         }
     };
+    const handleSelectUser = (userId) => {
+        setSelectedUser(userId);
+        setSelectedUserData(null);
+    };
+
+    useEffect(() => {
+        if (selectedUser) {
+            const newUserData = users.find((u) => u._id === selectedUser);
+            setSelectedUserData(newUserData);
+        } else {
+            setSelectedUserData(null);
+        }
+    }, [selectedUser, users]);
+
 
     return (
         <>
@@ -124,10 +138,9 @@ const Sidebar = () => {
                     {filteredUsers.map((user) => (
                         <div
                             key={user._id}
-                            onClick={() => setSelectedUser(user._id)}
-                            className={`relative flex items-center gap-2 p-2 pl-4 rounded cursor-pointer max-sm:text-sm ${
-                                selectedUserData && selectedUserData._id === user._id ? "bg-[#282142]/50" : ""
-                            }`}
+                            onClick={() => handleSelectUser(user._id)}
+                            className={`relative flex items-center gap-2 p-2 pl-4 rounded cursor-pointer max-sm:text-sm ${selectedUserData && selectedUserData._id === user._id ? "bg-[#282142]/50" : ""
+                                }`}
                         >
                             <img
                                 src={user?.profilePic || avatar_icon}
