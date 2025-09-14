@@ -10,21 +10,37 @@ import { Server } from "socket.io";
 const app = express();
 const server = http.createServer(app);
 
-// ✅ FIXED: Remove trailing slash and add multiple origins
+// CORS options
+const corsOptions = {
+    origin: [
+        "https://hello-chat-five.vercel.app",  // No trailing slash
+        "http://localhost:3000",                // For local development
+        "http://localhost:5173"                 // For Vite dev server
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+    optionsSuccessStatus: 200 // For legacy browsers
+};
+
+// Use CORS middleware globally before routes
+app.use(cors(corsOptions));
+
+// Handle preflight OPTIONS requests explicitly
+app.options('*', cors(corsOptions));
+
+app.use(express.json({ limit: "4mb" }));
+
+// Socket.io server setup with CORS config
 export const io = new Server(server, {
     cors: { 
-        origin: [
-            "https://hello-chat-five.vercel.app",  // ✅ No trailing slash
-            "http://localhost:3000",               // For local development
-            "http://localhost:5173"                // For Vite dev server
-        ],
-        methods: ["GET", "POST", "PUT", "DELETE"],
+        origin: corsOptions.origin,
+        methods: corsOptions.methods,
         credentials: true
     },
     transports: ["websocket", "polling"],
 });
 
-// ✅ Middleware to extract userId from auth
+// Middleware to extract userId from auth in socket handshake
 io.use((socket, next) => {
     const userId = socket.handshake.auth.userId;
     if (!userId) {
@@ -34,7 +50,7 @@ io.use((socket, next) => {
     next();
 });
 
-// Store Online users
+// Store online users map
 export const userSocketMap = {}; // { userId: socketId }
 
 // Helper function to get receiver's socket ID
@@ -86,27 +102,14 @@ io.on("connection", (socket) => {
     });
 });
 
-// ✅ FIXED: Updated CORS middleware
-app.use(express.json({ limit: "4mb" }));
-app.use(cors({
-    origin: [
-        "https://hello-chat-five.vercel.app",  // ✅ No trailing slash
-        "http://localhost:3000",               // For local development
-        "http://localhost:5173"                // For Vite dev server
-    ],
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: true,
-    optionsSuccessStatus: 200 // Some legacy browsers (IE11, various SmartTVs) choke on 204
-}));
-
-// Add request logging middleware
+// Request logging middleware
 app.use((req, res, next) => {
     console.log(`${req.method} ${req.originalUrl}`, req.headers.authorization ? 'WITH AUTH' : 'NO AUTH');
     console.log('Origin:', req.headers.origin);
     next();
 });
 
-// Route setup
+// Route for status check
 app.use("/api/status", (req, res) => {
     res.json({ 
         success: true, 
@@ -116,6 +119,7 @@ app.use("/api/status", (req, res) => {
     });
 });
 
+// API routes
 app.use("/api/auth", userRouter);
 app.use("/api/messages", messageRouter);
 
@@ -128,7 +132,7 @@ app.use((err, req, res, next) => {
     });
 });
 
-// Handle 404 routes
+// 404 route handler
 app.use((req, res) => {
     console.log(`404 - Route not found: ${req.method} ${req.originalUrl}`);
     res.status(404).json({ 
@@ -156,7 +160,7 @@ server.listen(PORT, '0.0.0.0', () => {
     console.log(`📡 Socket.io server is ready`);
 });
 
-// Graceful shutdown
+// Graceful shutdown handlers
 process.on('SIGTERM', () => {
     console.log('SIGTERM received. Shutting down gracefully...');
     server.close(() => {
